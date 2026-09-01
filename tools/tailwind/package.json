@@ -1,0 +1,11 @@
+{
+  "name": "rnd-tailwind-tools",
+  "private": true,
+  "scripts": {
+    "build": "tailwindcss -c tailwind.config.js -i ./tailwind.input.css -o ../../shared/frontend_assets/tailwind.css --minify",
+    "watch": "tailwindcss -c tailwind.config.js -i ./tailwind.input.css -o ../../shared/frontend_assets/tailwind.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "3.4.19"
+  }
+}
