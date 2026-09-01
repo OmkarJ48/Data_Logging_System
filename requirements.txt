@@ -1,0 +1,15 @@
+PyMuPDF
+fastapi
+matplotlib
+numpy
+opcua
+opencv-python
+openpyxl
+pandas
+python-dotenv
+python-multipart
+reportlab
+requests
+scipy
+uvicorn
+websockets
