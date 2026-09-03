@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# Safer updater: stop Codesys, move app/crc into place, sync visu, start Codesys, verify.
+
+set -euo pipefail
+
+SRC_DIR="/var/opt/codesys/PlcLogic/DLS/Updates"
+DST_DIR="/var/opt/codesys/PlcLogic/DLS"
+VISU_SRC="$SRC_DIR/visu"
+VISU_DST="/var/opt/codesys/PlcLogic/visu"
+SERVICE="codesyscontrol.service"
+
+APP_SRC="$SRC_DIR/DLS.app"
+CRC_SRC="$SRC_DIR/DLS.crc"
+APP_DST="$DST_DIR/DLS.app"
+CRC_DST="$DST_DIR/DLS.crc"
+
+# --- sanity checks ---
+if [ ! -f "$APP_SRC" ] || [ ! -f "$CRC_SRC" ]; then
+  echo "❌ Missing update files:"
+  echo "  $APP_SRC"
+  echo "  $CRC_SRC"
+  exit 1
+fi
+
+echo "🛑 Stopping $SERVICE..."
+sudo systemctl stop "$SERVICE"
+
+echo "🔄 Moving DLS.app and DLS.crc into place..."
+sudo mv -f "$APP_SRC" "$APP_DST"
+sudo mv -f "$CRC_SRC" "$CRC_DST"
+
+# --- handle visu ---
+if [ -d "$VISU_SRC" ]; then
+  echo "🖥️  Updating visu files..."
+  sudo mkdir -p "$VISU_DST"
+  sudo rsync -a --delete "$VISU_SRC"/ "$VISU_DST"/
+  sudo rm -rf "$VISU_SRC"
+else
+  echo "ℹ️  No visu folder found in updates — skipping visu copy."
+fi
+
+echo "♻️ Starting $SERVICE..."
+sudo systemctl start "$SERVICE"
+
+echo "🔎 Verifying service + port..."
+sudo systemctl is-active --quiet "$SERVICE" || {
+  echo "⚠️ $SERVICE failed to start. Logs:"
+  sudo journalctl -u "$SERVICE" -n 80 --no-pager
+  exit 2
+}
+
+# Give it a moment to bind sockets
+sleep 2
+if ! sudo ss -tulpn | grep -q ":8080"; then
+  echo "⚠️ $SERVICE is running but 8080 is not listening."
+  echo "Check whether WebVisu is enabled in the project and which port it's configured to use."
+  exit 3
+fi
+
+echo "✅ Update applied and WebVisu port is listening."
