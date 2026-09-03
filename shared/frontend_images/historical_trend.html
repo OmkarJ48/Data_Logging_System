@@ -1,0 +1,1188 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historical Trend Viewer</title>
+    <link rel="stylesheet" href="/styles/main.css" />
+    <link rel="stylesheet" href="/styles/tailwind.css" />
+    <script src="/assets/plotly-latest.min.js"></script>
+</head>
+<body class="body-styles flex flex-col h-screen">
+    <main class="live-trend-layout flex-grow">
+        <section class="live-trend-chart-shell">
+            <div id="chart" class="chart-container"></div>
+            <div id="messageOverlay" class="absolute inset-0 bg-black bg-opacity-95 flex items-center justify-center p-4">
+                <div class="text-center text-white">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                    </svg>
+                    <h3 class="mt-2 text-lg font-medium">No data loaded</h3>
+                    <p class="mt-1 text-sm">Please select your data CSV (and its matching details file).</p>
+                </div>
+            </div>
+        </section>
+        <aside class="live-trend-sidebar">
+            <div id="pinnedHover" class="pinned-hover hidden"></div>
+            <div id="measurementOverlay" class="measurement-overlay hidden"></div>
+            <div id="controlOverlay" class="control-overlay">
+                <div class="control-grid historical-control-grid">
+                    <label for="fileInput" id="fileInputLabel" class="file-input-btn btn text-sm">Select Files</label>
+                    <button id="measurementToggleBtn" type="button" class="btn text-sm" disabled>Cursors On</button>
+                </div>
+            </div>
+        </aside>
+        <input type="file" id="fileInput" accept=".csv,.json" multiple class="hidden">
+    </main>
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const fileInputLabel = document.getElementById('fileInputLabel');
+        const chartDiv = document.getElementById('chart');
+        const messageOverlay = document.getElementById('messageOverlay');
+        const measurementToggleBtn = document.getElementById('measurementToggleBtn');
+        const measurementOverlay = document.getElementById('measurementOverlay');
+        const pinnedHover = document.getElementById('pinnedHover');
+        const controlOverlay = document.getElementById('controlOverlay');
+
+        const groupMap = {
+            'Upstream':'Pressure','Downstream':'Pressure','Body':'Pressure','Actuator':'Pressure','Hyperbaric':'Pressure','Backseat':'Pressure','Spring Chamber':'Pressure','Primary Stem Seal':'Pressure','Secondary Stem Seal':'Pressure','Relief Port':'Pressure','BX Port':'Pressure','Spare':'','Flow Meter':'Leak Rate','Leak Rate':'Leak Rate','Mass Spectrometer Mantissa':'Mass Spectrometer','Mass Spectrometer':'Mass Spectrometer','LVDT':'LVDT','Torque':'Torque','Number Of Turns':'Number Of Turns','Motor Speed':'Motor Speed','Ambient Temperature':'Temperature','Body Temperature':'Temperature','Monitor Temperature':'Temperature','Chamber Temperature':'Temperature','Hyperbaric Temperature':'Temperature','Hyperbaric Water Temperature':'Temperature','Close':'Valve State','Open':'Valve State','Cycle Count':'Cycle Count'
+        };
+        const colorsMap = {
+            'Upstream': '#FF0000','Downstream': '#00B050','Body': '#FFA500','Actuator': '#FFFFFF','Hyperbaric': '#0000FF',
+            'Backseat': '#00FFFF','Spring Chamber': '#FF00FF','Primary Stem Seal': '#80FF00','Secondary Stem Seal': '#400080',
+            'Relief Port': '#008080','BX Port': '#800000','Flow Meter': '#808000','Mass Spectrometer Mantissa': '#FF66CC',
+            'Mass Spectrometer': '#66B2FF','LVDT': '#99FF33','Torque': '#663300','Number Of Turns': '#00FFAA',
+            'Motor Speed': '#336699','Ambient Temperature': '#0000FF','Body Temperature': '#00B050','Monitor Temperature': '#FFA500',
+            'Chamber Temperature': '#FFFFFF','Hyperbaric Temperature': '#FF0000','Hyperbaric Water Temperature': '#FF0000','Close': '#00FFFF','Open': '#FF00FF','Cycle Count': '#80FF00'
+        };
+        const lineStyleGroup = {
+            'Upstream': 'solid','Downstream': 'solid','Body': 'solid','Actuator': 'solid','Hyperbaric': 'solid','Backseat': 'solid',
+            'Spring Chamber': 'solid','Primary Stem Seal': 'solid','Secondary Stem Seal': 'solid','Relief Port': 'solid','BX Port': 'solid',
+            'Flow Meter': 'solid','Mass Spectrometer Mantissa': 'solid','Mass Spectrometer': 'solid','LVDT': 'solid','Torque': 'solid',
+            'Number Of Turns': 'solid','Motor Speed': 'solid','Ambient Temperature': 'dot','Body Temperature': 'dot',
+            'Monitor Temperature': 'dot','Chamber Temperature': 'dot','Hyperbaric Temperature': 'dot','Hyperbaric Water Temperature': 'dot','Close': 'dot',
+            'Open': 'dot','Cycle Count': 'dot'
+        };
+        const CHANNEL_UNITS_MAP = {
+            'Upstream':'psi','Downstream':'psi','Body':'psi','Actuator':'psi','Hyperbaric':'psi','Backseat':'psi','Spring Chamber':'psi','Primary Stem Seal':'psi','Secondary Stem Seal':'psi','Relief Port':'psi','BX Port':'psi','Spare':'','Flow Meter':'ml/min','Leak Rate':'ml/min','Mass Spectrometer Mantissa':'mbarl/sec','Mass Spectrometer':'mbarl/sec','LVDT':'mm','Torque':'lbs-ft','Number Of Turns':'','Motor Speed':'rpm','Ambient Temperature':'°C','Body Temperature':'°C','Monitor Temperature':'°C','Chamber Temperature':'°C','Hyperbaric Temperature':'°C','Hyperbaric Water Temperature':'°C','Close':'','Open':'','Cycle Count':''
+        };
+        const MEASUREMENT_HANDLE_COLORS = ['#ffffff', '#ffffff'];
+
+        let dataFile = null;
+        let detailsFile = null;
+        let channelInfo = [];
+        let channelNames = [];
+        let hoverTime = null;
+
+        let measurementModeActive = false;
+        let measurementCursors = null;
+        let measurementCursorAnchors = null;
+        let measurementEditRevision = 0;
+        let measurementHandleLayer = null;
+        let measurementHandleElements = [];
+        let measurementHandleDrag = null;
+        let measurementRowsEl = null;
+        let measurementRowsScrollTop = 0;
+        let measurementRowsScrollHeight = 0;
+        let measurementRowsClientHeight = 0;
+
+        fileInput.addEventListener('change', handleFileSelection);
+        if (measurementToggleBtn) {
+            measurementToggleBtn.addEventListener('click', () => {
+                if (measurementToggleBtn.disabled) return;
+                if (measurementModeActive) disableMeasurementMode();
+                else enableMeasurementMode();
+            });
+        }
+        if (pinnedHover) {
+            pinnedHover.addEventListener('click', onPinnedPanelClick);
+        }
+        window.addEventListener('resize', updatePinnedHoverConstraints);
+
+        setDataAvailability(false);
+
+        function handleFileSelection(event) {
+            const files = Array.from(event.target.files || []);
+            const fileNames = files.map(file => file.name);
+            fileInputLabel.textContent = 'Select Files';
+            fileInputLabel.classList.toggle('selected', files.length > 0);
+            fileInputLabel.title = fileNames.join(', ') || 'Select Files';
+
+            if (!files.length) {
+                dataFile = null;
+                detailsFile = null;
+                setDataAvailability(false);
+                return;
+            }
+
+            dataFile = files.find(f => f.name.includes('data')) || null;
+            detailsFile = files.find(f => f.name.includes('details.csv') || f.name.includes('details.json')) || null;
+
+            if (!dataFile) {
+                showErrorState('Missing Data', 'Could not find the data CSV. Please select both files.');
+                setDataAvailability(false);
+                return;
+            }
+
+            if (!detailsFile && dataFile) {
+                showErrorState('Missing Details', 'Could not find matching details file. Please select both files.');
+                setDataAvailability(false);
+                return;
+            }
+
+            if (dataFile && detailsFile) {
+                handlePlotRequest();
+            }
+        }
+
+        function readFileAsText(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(reader.error);
+                reader.readAsText(file);
+            });
+        }
+
+        async function handlePlotRequest() {
+            if (!dataFile || !detailsFile) return;
+            if (measurementModeActive) disableMeasurementMode();
+            setDataAvailability(false);
+            showLoadingState('Reading and processing files...');
+            try {
+                const dataCsvText = await readFileAsText(dataFile);
+                const detailsText = await readFileAsText(detailsFile);
+
+                let plotted = false;
+                if (detailsFile.name.endsWith('.json')) {
+                    plotted = await plotData(dataCsvText, null, detailsText);
+                } else {
+                    plotted = await plotData(dataCsvText, detailsText, null);
+                }
+                if (!plotted) {
+                    return;
+                }
+                hideMessageOverlay();
+                setDataAvailability(true);
+            } catch (error) {
+                console.error(error);
+                showErrorState('Failed to process files.', error?.message || 'An unexpected error occurred.');
+            }
+        }
+
+        function parseTimestamp(tsStr) {
+            const text = String(tsStr || '').trim();
+            if (!text) throw new Error('Missing timestamp in data row.');
+
+            const isoMatch = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})[T\s](\d{1,2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?/);
+            if (isoMatch) {
+                const [, y, m, d, h, min, s, ms = '0'] = isoMatch;
+                return new Date(+y, +m - 1, +d, +h, +min, +s, +(ms.padEnd(3, '0')));
+            }
+
+            const legacyMatch = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?/);
+            if (legacyMatch) {
+                const [, d, m, y, h, min, s, ms = '0'] = legacyMatch;
+                return new Date(+y, +m - 1, +d, +h, +min, +s, +(ms.padEnd(3, '0')));
+            }
+
+            const parsed = new Date(text);
+            if (!Number.isNaN(parsed.getTime())) return parsed;
+            throw new Error(`Unrecognised timestamp format: ${text}`);
+        }
+
+        function parseChannelValue(rawValue) {
+            const text = String(rawValue ?? '').trim();
+            if (!text) return null;
+            const upper = text.toUpperCase();
+            if (upper === 'TRUE') return 1;
+            if (upper === 'FALSE') return 0;
+            const value = Number(text);
+            return Number.isFinite(value) ? value : null;
+        }
+
+        function splitDataRow(row) {
+            const cols = String(row || '').split(',');
+            while (cols.length && cols[cols.length - 1].trim() === '') cols.pop();
+            return cols;
+        }
+
+        async function plotData(dataCsvText, detailsCsvText, detailsJsonText) {
+            if (!dataCsvText) return false;
+            if (detailsCsvText) {
+                const detLines = detailsCsvText.trim().split('\n');
+                channelInfo = detLines.slice(19, 45).map(l => {
+                    const p = l.split(',');
+                    return { name: p[0]?.trim(), visible: (p[3] || '').trim().toUpperCase() === 'TRUE' };
+                }).filter(ci => ci.name);
+            } else if (detailsJsonText) {
+                const details = JSON.parse(detailsJsonText);
+                channelInfo = (details.channel_info || []).map(ci => ({ name: ci.channel, visible: !!ci.visible })).filter(ci => ci.name);
+            } else {
+                showErrorState('Missing Details', 'No details file provided.');
+                return false;
+            }
+
+            const dataLines = dataCsvText.trim().split('\n');
+            const rows = dataLines.slice(1);
+            if (!rows.length) {
+                showErrorState('No Data', 'The data file does not contain any rows.');
+                return false;
+            }
+            if (splitDataRow(rows[0]).length - 1 !== channelInfo.length) {
+                showErrorState('Column mismatch', 'Channel details do not match the data file.');
+                return false;
+            }
+
+            const groups = [...new Set(channelInfo.map(ci => groupMap[ci.name]).filter(Boolean))];
+            if (!groups.length) groups.push('Primary');
+
+            const traces = channelInfo.map((ci) => {
+                const grp = groupMap[ci.name] || groups[0];
+                let axisIndex = groups.indexOf(grp);
+                if (axisIndex < 0) axisIndex = 0;
+                const yaxis = axisIndex === 0 ? 'y' : `y${axisIndex + 1}`;
+                return {
+                    x: [],
+                    y: [],
+                    mode: 'lines',
+                    type: 'scattergl',
+                    name: ci.name,
+                    line: {
+                        width: 2,
+                        color: colorsMap[ci.name] || '#888',
+                        dash: lineStyleGroup[ci.name] || 'solid',
+                        simplify: false
+                    },
+                    hoverinfo: 'none',
+                    opacity: 1,
+                    fill: 'none',
+                    yaxis,
+                    visible: ci.visible ? true : 'legendonly'
+                };
+            });
+
+            rows.forEach(row => {
+                const cols = splitDataRow(row);
+                const timestamp = parseTimestamp(cols[0].trim());
+                channelInfo.forEach((_, idx) => {
+                    const trace = traces[idx];
+                    if (!trace) return;
+                    const value = parseChannelValue(cols[idx + 1]);
+                    if (value !== null) {
+                        trace.x.push(timestamp);
+                        trace.y.push(value);
+                    }
+                });
+            });
+
+            const layout = {
+                hoverlabel: {
+                    namelength: -1,
+                    bgcolor: 'rgba(0,0,0,0)',
+                    bordercolor: 'rgba(0,0,0,0)',
+                    font: { color: 'rgba(0,0,0,0)' }
+                },
+                xaxis: {
+                    title: { text: 'Time', standoff: 8 },
+                    color: '#fff',
+                    tickfont: { color: '#fff' },
+                    gridcolor: '#444',
+                    showspikes: true,
+                    spikecolor: '#fff',
+                    spikedash: 'dot',
+                    spikethickness: 1,
+                    spikesnap: 'cursor',
+                    spikemode: 'across',
+                    automargin: true,
+                    showline: true,
+                    linecolor: '#666',
+                    ticks: 'outside',
+                    ticklen: 6,
+                    tickcolor: '#666',
+                    zeroline: false
+                },
+                hovermode: 'x unified',
+                hoverinfo: 'none',
+                margin: { l: 16, r: 0, b: 16, t: 0, pad: 0 },
+                plot_bgcolor: '#111111',
+                paper_bgcolor: '#000000',
+                showlegend: false,
+                legend: { font: { color: '#fff' } }
+            };
+
+            groups.forEach((grp, index) => {
+                const axisIdx = index + 1;
+                const key = axisIdx === 1 ? 'yaxis' : `yaxis${axisIdx}`;
+                if (grp === 'Pressure' && axisIdx === 1) {
+                    layout[key] = {
+                        title: { text: `Pressure (${CHANNEL_UNITS_MAP['Upstream']})`, standoff: 8 },
+                        color: '#fff',
+                        tickfont: { color: '#fff' },
+                        tickformat: ',.0f',
+                        anchor: 'x',
+                        side: 'left',
+                        position: 0,
+                        automargin: true,
+                        showgrid: true,
+                        gridcolor: '#444',
+                        showline: true,
+                        linecolor: '#666',
+                        ticks: 'outside',
+                        ticklen: 6,
+                        tickcolor: '#666',
+                        zeroline: false
+                    };
+                } else if (grp === 'Temperature') {
+                    layout[key] = {
+                        visible: false,
+                        ticks: '',
+                        title: '',
+                        color: '#fff',
+                        anchor: 'x',
+                        overlaying: 'y',
+                        side: axisIdx % 2 === 1 ? 'left' : 'right',
+                        position: 1 - (0.1 * (axisIdx - 2)),
+                        range: [-60, 260],
+                        showgrid: false,
+                        showline: false,
+                        zeroline: false
+                    };
+                } else {
+                    layout[key] = {
+                        visible: false,
+                        title: '',
+                        color: '#fff',
+                        anchor: 'x',
+                        overlaying: 'y',
+                        side: axisIdx % 2 === 1 ? 'left' : 'right',
+                        position: 1 - (0.1 * (axisIdx - 2)),
+                        showgrid: false,
+                        showline: false,
+                        zeroline: false
+                    };
+                }
+            });
+
+            await Plotly.react(chartDiv, traces, layout, { responsive: true, displayModeBar: false });
+
+            channelNames = channelInfo.map(ci => ci.name);
+            attachPlotEvents();
+            hoverTime = null;
+            renderPinnedPanel();
+            updatePinnedHoverConstraints();
+            updateMeasurementToggleButton();
+            if (measurementModeActive) {
+                measurementCursors = null;
+                syncMeasurementShapes();
+                updateMeasurementOverlay();
+            }
+            return true;
+        }
+
+        function showLoadingState(msg) {
+            messageOverlay.innerHTML = `<div class="text-center text-white"><div class="spinner mx-auto"></div><h3 class="mt-4 font-medium">Processing...</h3><p class="mt-1 text-sm">${msg}</p></div>`;
+            messageOverlay.classList.remove('hidden');
+        }
+
+        function hideMessageOverlay() {
+            messageOverlay.classList.add('hidden');
+        }
+
+        function showErrorState(title, detail) {
+            messageOverlay.innerHTML = `<div class="text-center text-red-500"><h3 class="mt-2 font-medium text-red-400">${title}</h3><p class="mt-1 text-sm text-red-300">${detail}</p></div>`;
+            messageOverlay.classList.remove('hidden');
+            setDataAvailability(false);
+            if (pinnedHover) {
+                pinnedHover.classList.add('hidden');
+                pinnedHover.innerHTML = '';
+            }
+        }
+
+        function setDataAvailability(available) {
+            if (!measurementToggleBtn) return;
+            measurementToggleBtn.disabled = !available;
+            measurementToggleBtn.classList.toggle('opacity-50', !available);
+            measurementToggleBtn.classList.toggle('cursor-not-allowed', !available);
+            if (!available) {
+                if (measurementModeActive) disableMeasurementMode();
+            }
+            updateMeasurementToggleButton();
+        }
+
+        function attachPlotEvents() {
+            if (!chartDiv || typeof chartDiv.on !== 'function') return;
+            if (typeof chartDiv.removeListener === 'function') {
+                chartDiv.removeListener('plotly_hover', onPlotHover);
+                chartDiv.removeListener('plotly_unhover', onPlotUnhover);
+                chartDiv.removeListener('plotly_relayout', onPlotRelayout);
+            }
+            chartDiv.on('plotly_hover', onPlotHover);
+            chartDiv.on('plotly_unhover', onPlotUnhover);
+            chartDiv.on('plotly_relayout', onPlotRelayout);
+        }
+
+        function onPlotHover(event) {
+            if (!event?.points?.length) return;
+            const base = event.points[0].x instanceof Date ? event.points[0].x : new Date(event.points[0].x);
+            hoverTime = base instanceof Date && !Number.isNaN(base.getTime()) ? base : null;
+            renderPinnedPanel(hoverTime);
+        }
+
+        function onPlotUnhover() {
+            hoverTime = null;
+            renderPinnedPanel();
+        }
+
+        function onPlotRelayout(eventData) {
+            if (!measurementModeActive) return;
+            if (eventData && Object.keys(eventData).some(key => key.startsWith('shapes['))) {
+                captureMeasurementCursorsFromLayout();
+                updateMeasurementOverlay();
+                updateMeasurementHandles();
+                return;
+            }
+            if (eventData && (Object.prototype.hasOwnProperty.call(eventData, 'xaxis.range') || eventData['xaxis.range[0]'] || eventData['xaxis.range[1]'])) {
+                const range = getCurrentXRange();
+                if (measurementCursorAnchors && applyMeasurementAnchorsToRange(range)) {
+                    syncMeasurementShapes();
+                    return;
+                }
+                updateMeasurementAnchorsFromCursors(range);
+                updateMeasurementOverlay();
+                updateMeasurementHandles();
+                return;
+            }
+            updateMeasurementHandles();
+        }
+
+        function renderPinnedPanel(forceTime = null) {
+            if (!pinnedHover) return;
+            const traces = chartDiv?.data || [];
+            if (!traces.length) {
+                pinnedHover.classList.add('hidden');
+                pinnedHover.innerHTML = '';
+                return;
+            }
+            const time = forceTime || hoverTime || getLatestTime();
+            const content = buildPinnedContentForTime(time);
+            pinnedHover.innerHTML = content;
+            pinnedHover.classList.remove('hidden');
+            updatePinnedHoverConstraints();
+        }
+
+        function buildPinnedContentForTime(time) {
+            const target = time instanceof Date ? time : new Date(time);
+            const timeText = formatTimeForHeader(target);
+            const traces = chartDiv?.data || [];
+
+            // Build row objects with visibility info
+            const rowObjects = traces.map((trace, index) => {
+                const name = channelNames[index] || trace?.name || `Trace ${index + 1}`;
+                const shown = getTraceVisible(index);
+                const color = trace?.line?.color || colorsMap[name] || '#fff';
+                const isDotted = (trace?.line?.dash || '') === 'dot';
+                const value = sampleTraceValueAt(index, target);
+                const valueStr = formatHoverValue(value);
+                const unit = CHANNEL_UNITS_MAP[name] || '';
+                const strokeColor = shown ? color : '#6b7280';
+                const unitSpan = unit ? `<span style="font-size:0.85rem; opacity:0.75;">${unit}</span>` : '';
+
+                const html = `
+                    <div class="ph-row ${shown ? '' : 'is-hidden'}" data-index="${index}">
+                        <div class="ph-label">
+                            <span data-role="stroke"
+                                style="display:inline-block; width:32px; height:0;
+                                    border-top:4px ${isDotted ? 'dotted' : 'solid'} ${strokeColor};
+                                    flex-shrink:0;"></span>
+                            <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                ${name}
+                            </span>
+                        </div>
+                        <div class="ph-value">
+                            <span data-role="val">${valueStr}</span>
+                            ${unitSpan}
+                        </div>
+                    </div>
+                `;
+
+                return { index, html, visible: shown };
+            });
+
+            // Sort: visible channels first, then hidden
+            rowObjects.sort((a, b) => {
+                // true > false, so visible rows are listed first
+                if (a.visible === b.visible) return 0;
+                return a.visible ? -1 : 1;
+            });
+
+            const rows = rowObjects.map(r => r.html).join('');
+            const rowsContent = rows.trim()
+                ? rows
+                : '<div class="ph-empty">No channels available.</div>';
+
+            return `
+                <div class="ph-time">
+                    <span data-role="time-text">${timeText}</span>
+                </div>
+                <div class="ph-rows">
+                    ${rowsContent}
+                </div>
+            `;
+        }
+
+
+        function getLatestTime() {
+            let best = null;
+            const traces = chartDiv?.data || [];
+            traces.forEach(trace => {
+                const xs = trace?.x;
+                if (!xs || !xs.length) return;
+                const x = xs[xs.length - 1];
+                const date = x instanceof Date ? x : new Date(x);
+                if (!Number.isNaN(date.getTime()) && (!best || date > best)) best = date;
+            });
+            return best || new Date();
+        }
+
+        function formatTimeForHeader(time) {
+            const date = time instanceof Date ? time : new Date(time);
+            if (Number.isNaN(date.getTime())) return '--';
+            return date.toLocaleString(undefined, { hour12: false });
+        }
+
+        function sampleTraceValueAt(index, time) {
+            try {
+                const trace = chartDiv?.data?.[index];
+                if (!trace || !trace.x || !trace.y || !trace.x.length) return null;
+                const target = time instanceof Date ? time.getTime() : new Date(time).getTime();
+                if (!Number.isFinite(target)) return null;
+                const xs = trace.x;
+                const ys = trace.y;
+                let lo = 0;
+                let hi = xs.length - 1;
+                const valueAt = (idx) => (xs[idx] instanceof Date ? xs[idx].getTime() : new Date(xs[idx]).getTime());
+                if (target <= valueAt(lo)) return ys[lo];
+                if (target >= valueAt(hi)) return ys[hi];
+                while (lo <= hi) {
+                    const mid = (lo + hi) >> 1;
+                    const tMid = valueAt(mid);
+                    if (tMid === target) return ys[mid];
+                    if (tMid < target) lo = mid + 1; else hi = mid - 1;
+                }
+                const tLo = valueAt(lo);
+                const tHi = valueAt(hi);
+                return Math.abs(tLo - target) < Math.abs(tHi - target) ? ys[lo] : ys[hi];
+            } catch (err) {
+                console.warn('sampleTraceValueAt error', err);
+                return null;
+            }
+        }
+
+        function formatHoverValue(value) {
+            if (typeof value === 'number' && Number.isFinite(value)) return value.toFixed(1);
+            return value == null ? '--' : String(value);
+        }
+
+        function getTraceVisible(index) {
+            const trace = chartDiv?.data?.[index];
+            if (!trace) return false;
+            const visible = trace.visible;
+            if (visible === undefined || visible === true) return true;
+            if (visible === 'legendonly') return false;
+            return !!visible;
+        }
+
+        function toggleTraceVisibility(index) {
+            const currentlyVisible = getTraceVisible(index);
+            const nextVisible = currentlyVisible ? 'legendonly' : true;
+            Plotly.restyle(chartDiv, { visible: nextVisible }, [index]).then(() => {
+                renderPinnedPanel(hoverTime || null);
+                if (measurementModeActive) updateMeasurementOverlay();
+            }).catch(err => console.error('toggleTraceVisibility error', err));
+        }
+
+        function onPinnedPanelClick(event) {
+            const row = event.target.closest('.ph-row');
+            if (!row) return;
+            const index = Number(row.dataset.index);
+            if (!Number.isInteger(index)) return;
+            toggleTraceVisibility(index);
+        }
+
+        function updatePinnedHoverConstraints() {
+            if (!pinnedHover) return;
+            const pinnedRect = pinnedHover.getBoundingClientRect();
+            const pinnedTop = Number.isFinite(pinnedRect?.top) ? pinnedRect.top : 0;
+            let bottomLimit = window.innerHeight - 12;
+
+            if (controlOverlay) {
+                const controlRect = controlOverlay.getBoundingClientRect();
+                if (controlRect && Number.isFinite(controlRect.top)) {
+                    bottomLimit = Math.min(bottomLimit, controlRect.top - 12);
+                }
+            }
+
+            if (measurementOverlay && !measurementOverlay.classList.contains('hidden')) {
+                const measurementRect = measurementOverlay.getBoundingClientRect();
+                if (measurementRect && Number.isFinite(measurementRect.top)) {
+                    bottomLimit = Math.min(bottomLimit, measurementRect.top - 12);
+                }
+            }
+
+            const clearance = bottomLimit - pinnedTop;
+            const available = Math.max(0, Math.floor(clearance));
+            pinnedHover.style.maxHeight = `${available}px`;
+
+            const rowsEl = pinnedHover.querySelector('.ph-rows');
+            if (rowsEl) {
+                const headerEl = pinnedHover.querySelector('.ph-time');
+                let headerHeight = 0;
+                if (headerEl) {
+                    const headerRect = headerEl.getBoundingClientRect();
+                    headerHeight = Number.isFinite(headerRect?.height) ? headerRect.height : 0;
+                }
+
+                const computed = window.getComputedStyle(pinnedHover);
+                const toNumber = (value) => {
+                    const parsed = parseFloat(value);
+                    return Number.isFinite(parsed) ? parsed : 0;
+                };
+                const paddingTop = toNumber(computed?.paddingTop);
+                const paddingBottom = toNumber(computed?.paddingBottom);
+                const gapY = toNumber(computed?.rowGap || computed?.gap);
+                const rowsMax = Math.max(0, available - headerHeight - paddingTop - paddingBottom - gapY);
+                rowsEl.style.maxHeight = `${rowsMax}px`;
+            }
+        }
+
+        function enableMeasurementMode() {
+            measurementModeActive = true;
+            measurementOverlay.classList.remove('hidden');
+            if (!chartDiv?.data || !chartDiv.data.length) {
+                measurementCursorAnchors = null;
+                setMeasurementOverlayMessage('Chart data not loaded yet.');
+                updatePinnedHoverConstraints();
+                updateMeasurementToggleButton();
+                return;
+            }
+            if (!resetMeasurementCursorsToViewQuartiles()) {
+                ensureMeasurementCursors();
+            }
+            ensureMeasurementHandleLayer();
+            syncMeasurementShapes();
+            updateMeasurementOverlay();
+            updateMeasurementHandles();
+            updateMeasurementToggleButton();
+            updatePinnedHoverConstraints();
+        }
+
+        function disableMeasurementMode() {
+            measurementModeActive = false;
+            measurementOverlay.classList.add('hidden');
+            measurementCursorAnchors = null;
+            measurementCursors = null;
+            destroyMeasurementHandleLayer();
+            measurementEditRevision += 1;
+            if (chartDiv?.layout) {
+                Plotly.relayout(chartDiv, {
+                    shapes: [],
+                    editrevision: measurementEditRevision,
+                    'edits.shapePosition': false
+                }).catch(() => {});
+            }
+            updateMeasurementToggleButton();
+            updatePinnedHoverConstraints();
+        }
+
+        function updateMeasurementToggleButton() {
+            if (!measurementToggleBtn) return;
+            measurementToggleBtn.textContent = measurementModeActive ? 'Cursors Off' : 'Cursors On';
+        }
+
+        function ensureMeasurementHandleLayer() {
+            if (measurementHandleLayer || !chartDiv) return;
+            measurementHandleLayer = document.createElement('div');
+            measurementHandleLayer.className = 'measurement-handle-layer';
+            measurementHandleElements = MEASUREMENT_HANDLE_COLORS.map((color, idx) => {
+                const handle = document.createElement('div');
+                handle.className = 'measurement-handle';
+                handle.dataset.index = String(idx);
+                handle.style.setProperty('--cursor-color', color);
+                handle.addEventListener('pointerdown', onMeasurementHandlePointerDown);
+                measurementHandleLayer.appendChild(handle);
+                return handle;
+            });
+            chartDiv.appendChild(measurementHandleLayer);
+        }
+
+        function destroyMeasurementHandleLayer() {
+            if (measurementHandleDrag) {
+                const { index, pointerId } = measurementHandleDrag;
+                const activeHandle = measurementHandleElements[index];
+                if (activeHandle) {
+                    activeHandle.classList.remove('is-dragging');
+                    if (typeof pointerId === 'number' && typeof activeHandle.releasePointerCapture === 'function') {
+                        try { activeHandle.releasePointerCapture(pointerId); } catch (err) {}
+                    }
+                }
+                window.removeEventListener('pointermove', onMeasurementHandlePointerMove);
+                window.removeEventListener('pointerup', onMeasurementHandlePointerUp);
+                if (measurementHandleLayer) measurementHandleLayer.classList.remove('is-dragging');
+                measurementHandleDrag = null;
+            }
+            if (measurementHandleLayer) {
+                measurementHandleLayer.remove();
+                measurementHandleLayer = null;
+            }
+            measurementHandleElements = [];
+        }
+
+        function updateMeasurementHandles() {
+            if (!measurementHandleElements.length || !chartDiv) return;
+            const range = getCurrentXRange();
+            if (!range) return;
+            const [start, end] = range;
+            const span = end - start;
+            if (!Number.isFinite(span) || span <= 0) return;
+            const fullLayout = chartDiv?._fullLayout;
+            if (!fullLayout) return;
+            const size = fullLayout._size || {};
+            const rect = chartDiv.getBoundingClientRect();
+            const plotLeft = rect.left + (Number.isFinite(size.l) ? size.l : 0);
+            const plotWidth = Number.isFinite(size.w) ? size.w : rect.width;
+            const bottom = rect.top + (Number.isFinite(size.t) ? size.t : 0) + (Number.isFinite(size.h) ? size.h : rect.height);
+            const handleSize = 22;
+            measurementHandleElements.forEach((handle, idx) => {
+                if (!handle) return;
+                const color = MEASUREMENT_HANDLE_COLORS[idx] || MEASUREMENT_HANDLE_COLORS[0];
+                handle.style.setProperty('--cursor-color', color);
+                const value = measurementCursors?.[idx];
+                if (!Number.isFinite(value)) {
+                    handle.style.transform = 'translate(-9999px, -9999px)';
+                    return;
+                }
+                const ratio = (value - start) / span;
+                const clamped = Math.max(0, Math.min(1, ratio));
+                const x = plotLeft + clamped * plotWidth;
+                handle.style.transform = `translate(${x - handleSize / 2}px, ${bottom - handleSize / 2}px)`;
+            });
+            updateMeasurementAnchorsFromCursors(range);
+        }
+
+        function onMeasurementHandlePointerDown(event) {
+            if (!measurementModeActive) return;
+            if (!(event?.currentTarget instanceof HTMLElement)) return;
+            event.preventDefault();
+            const idx = Number(event.currentTarget.dataset.index || '0');
+            measurementHandleDrag = { index: idx, pointerId: event.pointerId };
+            try { event.currentTarget.setPointerCapture(event.pointerId); } catch (err) {}
+            event.currentTarget.classList.add('is-dragging');
+            if (measurementHandleLayer) measurementHandleLayer.classList.add('is-dragging');
+            window.addEventListener('pointermove', onMeasurementHandlePointerMove);
+            window.addEventListener('pointerup', onMeasurementHandlePointerUp);
+        }
+
+        function onMeasurementHandlePointerMove(event) {
+            if (!measurementHandleDrag) return;
+            if (typeof event.pointerId === 'number' && event.pointerId !== measurementHandleDrag.pointerId) return;
+            const range = getCurrentXRange();
+            const fullLayout = chartDiv?._fullLayout;
+            if (!range || !fullLayout) return;
+            const [start, end] = range;
+            const span = end - start;
+            if (!Number.isFinite(span) || span <= 0) return;
+            const size = fullLayout._size || {};
+            const rect = chartDiv.getBoundingClientRect();
+            const plotLeft = rect.left + (Number.isFinite(size.l) ? size.l : 0);
+            const plotWidth = Number.isFinite(size.w) ? size.w : rect.width;
+            if (!Number.isFinite(plotWidth) || plotWidth <= 0) return;
+            event.preventDefault();
+            const rawRatio = (event.clientX - plotLeft) / plotWidth;
+            const clampedRatio = Math.max(0, Math.min(1, rawRatio));
+            let value = start + clampedRatio * span;
+            if (!measurementCursors || measurementCursors.length < 2) return;
+            const otherIdx = measurementHandleDrag.index === 0 ? 1 : 0;
+            const otherValue = measurementCursors[otherIdx];
+            if (measurementHandleDrag.index === 0 && Number.isFinite(otherValue)) {
+                value = Math.min(value, otherValue);
+            } else if (measurementHandleDrag.index === 1 && Number.isFinite(otherValue)) {
+                value = Math.max(value, otherValue);
+            }
+            measurementCursors[measurementHandleDrag.index] = value;
+            updateMeasurementOverlay();
+            updateMeasurementShapeDuringDrag(measurementHandleDrag.index, value);
+            updateMeasurementAnchorsFromCursors(range);
+        }
+
+        function onMeasurementHandlePointerUp(event) {
+            if (!measurementHandleDrag) return;
+            if (typeof event.pointerId === 'number' && event.pointerId !== measurementHandleDrag.pointerId) return;
+            event.preventDefault();
+            const { index, pointerId } = measurementHandleDrag;
+            const handle = measurementHandleElements[index];
+            if (handle) {
+                handle.classList.remove('is-dragging');
+                if (typeof pointerId === 'number') {
+                    try { handle.releasePointerCapture(pointerId); } catch (err) {}
+                }
+            }
+            if (measurementHandleLayer) measurementHandleLayer.classList.remove('is-dragging');
+            window.removeEventListener('pointermove', onMeasurementHandlePointerMove);
+            window.removeEventListener('pointerup', onMeasurementHandlePointerUp);
+            measurementHandleDrag = null;
+            measurementEditRevision += 1;
+            syncMeasurementShapes();
+        }
+
+        function updateMeasurementShapeDuringDrag(index, value) {
+            if (!chartDiv?.layout?.shapes || chartDiv.layout.shapes.length < index + 1) return;
+            const payload = {};
+            const dateVal = new Date(value);
+            payload[`shapes[${index}].x0`] = dateVal;
+            payload[`shapes[${index}].x1`] = dateVal;
+            Plotly.relayout(chartDiv, payload).catch(() => {});
+        }
+
+        function ensureMeasurementCursors() {
+            if (measurementCursors && measurementCursors.length === 2) return;
+            const range = getCurrentXRange();
+            if (!range) return;
+            const [start, end] = range;
+            const span = end - start;
+            if (!Number.isFinite(span) || span <= 0) return;
+            const first = start + span * 0.25;
+            const second = start + span * 0.75;
+            measurementCursors = [first, second];
+            measurementCursorAnchors = [0.25, 0.75];
+        }
+
+        function resetMeasurementCursorsToViewQuartiles() {
+            const range = getCurrentXRange();
+            if (!range) return false;
+            const [start, end] = range;
+            const span = end - start;
+            if (!Number.isFinite(span) || span <= 0) return false;
+            const first = start + span * 0.25;
+            const second = start + span * 0.75;
+            measurementCursors = [first, second];
+            measurementCursorAnchors = [0.25, 0.75];
+            return true;
+        }
+
+        function getCurrentXRange() {
+            const layoutRange = chartDiv?.layout?.xaxis?.range;
+            const fullRange = chartDiv?._fullLayout?.xaxis?.range;
+            const range = (layoutRange && layoutRange.length === 2) ? layoutRange : fullRange;
+            if (!range || range.length !== 2) return null;
+            const start = (range[0] instanceof Date) ? range[0].getTime() : new Date(range[0]).getTime();
+            const end = (range[1] instanceof Date) ? range[1].getTime() : new Date(range[1]).getTime();
+            if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+            return [start, end];
+        }
+
+        function clamp01(value) {
+            const v = Number.isFinite(value) ? value : 0;
+            if (v <= 0) return 0;
+            if (v >= 1) return 1;
+            return v;
+        }
+
+        function updateMeasurementAnchorsFromCursors(rangeOverride = null) {
+            if (!measurementModeActive) return;
+            if (!measurementCursors || measurementCursors.length < 2) {
+                measurementCursorAnchors = null;
+                return;
+            }
+            const range = rangeOverride || getCurrentXRange();
+            if (!range) {
+                measurementCursorAnchors = null;
+                return;
+            }
+            const [start, end] = range;
+            const span = end - start;
+            if (!Number.isFinite(span) || span <= 0) {
+                measurementCursorAnchors = null;
+                return;
+            }
+            measurementCursorAnchors = measurementCursors.map(value => clamp01((value - start) / span));
+        }
+
+        function applyMeasurementAnchorsToRange(range) {
+            if (!range || range.length !== 2) return false;
+            if (!measurementCursorAnchors || measurementCursorAnchors.length < 2) return false;
+            const [start, end] = range;
+            const span = end - start;
+            if (!Number.isFinite(span) || span <= 0) return false;
+            const next = measurementCursorAnchors.map(anchor => start + clamp01(anchor) * span);
+            if (!measurementCursors || measurementCursors.length < 2) {
+                measurementCursors = next;
+                return true;
+            }
+            let changed = false;
+            measurementCursors = measurementCursors.map((value, idx) => {
+                const candidate = next[idx];
+                if (!Number.isFinite(value) || Math.abs(value - candidate) > 0.5) changed = true;
+                return candidate;
+            });
+            return changed;
+        }
+
+        function syncMeasurementShapes() {
+            if (!measurementModeActive || !measurementCursors || measurementCursors.length < 2) return;
+            if (!chartDiv?.layout) return;
+            const sorted = measurementCursors.slice().sort((a, b) => a - b);
+            measurementCursors = sorted;
+            updateMeasurementAnchorsFromCursors();
+            const shapes = sorted.map((x, idx) => ({
+                type: 'line',
+                xref: 'x',
+                yref: 'paper',
+                x0: new Date(x),
+                x1: new Date(x),
+                y0: 0,
+                y1: 1,
+                line: {
+                    color: MEASUREMENT_HANDLE_COLORS[idx] || MEASUREMENT_HANDLE_COLORS[0],
+                    width: 2,
+                    dash: 'dash'
+                },
+                layer: 'above',
+                meta: 'measurement'
+            }));
+            measurementEditRevision += 1;
+            Plotly.relayout(chartDiv, {
+                shapes,
+                editrevision: measurementEditRevision,
+                'edits.shapePosition': true
+            }).then(() => {
+                updateMeasurementOverlay();
+                updateMeasurementHandles();
+            }).catch(() => {});
+        }
+
+        function captureMeasurementCursorsFromLayout() {
+            const shapes = (chartDiv?.layout?.shapes || []).filter(s => s?.meta === 'measurement');
+            if (!shapes.length) return;
+            const xs = shapes.map(s => {
+                const xVal = s?.x0 ?? s?.x1;
+                if (xVal instanceof Date) return xVal.getTime();
+                const parsed = new Date(xVal).getTime();
+                return Number.isFinite(parsed) ? parsed : null;
+            }).filter(v => Number.isFinite(v));
+            if (xs.length === 2) {
+                measurementCursors = xs.sort((a, b) => a - b);
+                updateMeasurementAnchorsFromCursors();
+                updateMeasurementHandles();
+            }
+        }
+
+        function updateMeasurementOverlay() {
+            if (!measurementModeActive) return;
+            updateMeasurementHandles();
+            if (!measurementCursors || measurementCursors.length < 2) {
+                ensureMeasurementCursors();
+            }
+            if (!measurementCursors || measurementCursors.length < 2) {
+                setMeasurementOverlayMessage('Move the cursors to analyse data.');
+                updatePinnedHoverConstraints();
+                return;
+            }
+            const [a, b] = measurementCursors;
+            const startMs = Math.min(a, b);
+            const endMs = Math.max(a, b);
+            if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
+                setMeasurementOverlayMessage('Unable to determine cursor positions.');
+                updatePinnedHoverConstraints();
+                return;
+            }
+            const startDate = new Date(startMs);
+            const endDate = new Date(endMs);
+            const deltaMs = Math.abs(endMs - startMs);
+
+            const sections = ensureMeasurementOverlaySections();
+            if (!sections) return;
+            rememberMeasurementRowsScrollState();
+            sections.meta.innerHTML = `
+                <div><span>A:</span> ${formatCursorTime(startDate)}</div>
+                <div><span>B:</span> ${formatCursorTime(endDate)}</div>
+                <div><span>Delta t:</span> ${formatDuration(deltaMs)}</div>
+            `;
+            const rowsHtml = buildMeasurementRows(startMs, endMs);
+            sections.rows.innerHTML = rowsHtml;
+            restoreMeasurementRowsScrollState();
+            updatePinnedHoverConstraints();
+        }
+
+        function buildMeasurementRows(startMs, endMs) {
+            const rows = [];
+            const traces = chartDiv?.data || [];
+            for (let i = 0; i < traces.length; i++) {
+                if (!getTraceVisible(i)) continue;
+                const stats = computeTraceStatsBetween(traces[i], startMs, endMs);
+                if (!stats) continue;
+                const name = channelNames[i] || traces[i]?.name || `Trace ${i + 1}`;
+                const unit = CHANNEL_UNITS_MAP[name] || '';
+                const color = traces[i]?.line?.color || colorsMap[name] || '#ffffff';
+                const unitText = unit ? ` ${unit}` : '';
+                rows.push(`
+                    <div class="measurement-row">
+                        <div class="measurement-row-title">
+                            <span style="background:${color};"></span>
+                            <div>${name}</div>
+                        </div>
+                        <div class="measurement-stats">
+                            <div class="measurement-stat"><div class="measurement-stat-label">Avg</div><div>${formatMeasurementNumber(stats.average)}${unitText}</div></div>
+                            <div class="measurement-stat"><div class="measurement-stat-label">Delta</div><div>${formatMeasurementNumber(stats.delta)}${unitText}</div></div>
+                            <div class="measurement-stat"><div class="measurement-stat-label">Min</div><div>${formatMeasurementNumber(stats.min)}${unitText}</div></div>
+                            <div class="measurement-stat"><div class="measurement-stat-label">Max</div><div>${formatMeasurementNumber(stats.max)}${unitText}</div></div>
+                        </div>
+                    </div>
+                `);
+            }
+            if (!rows.length) {
+                return '<div class="measurement-empty">No visible traces contain data between the cursors.</div>';
+            }
+            return rows.join('');
+        }
+
+        function computeTraceStatsBetween(trace, startMs, endMs) {
+            try {
+                const xs = trace?.x;
+                const ys = trace?.y;
+                if (!xs || !ys || xs.length !== ys.length || !xs.length) return null;
+                let sum = 0;
+                let count = 0;
+                let min = Infinity;
+                let max = -Infinity;
+                let firstValue = null;
+                let lastValue = null;
+                for (let idx = 0; idx < xs.length; idx++) {
+                    let t = xs[idx];
+                    if (t instanceof Date) t = t.getTime();
+                    else t = new Date(t).getTime();
+                    if (!Number.isFinite(t)) continue;
+                    if (t < startMs) continue;
+                    if (t > endMs) break;
+                    const val = ys[idx];
+                    if (typeof val !== 'number' || !Number.isFinite(val)) continue;
+                    if (firstValue === null) firstValue = val;
+                    lastValue = val;
+                    sum += val;
+                    count += 1;
+                    if (val < min) min = val;
+                    if (val > max) max = val;
+                }
+                if (!count) return null;
+                return {
+                    average: sum / count,
+                    delta: (lastValue != null && firstValue != null) ? (lastValue - firstValue) : null,
+                    min,
+                    max
+                };
+            } catch (e) {
+                console.error('computeTraceStatsBetween error', e);
+                return null;
+            }
+        }
+
+        function formatMeasurementNumber(value) {
+            if (typeof value === 'number' && Number.isFinite(value)) return value.toFixed(1);
+            return '--';
+        }
+
+        function formatDuration(ms) {
+            if (!Number.isFinite(ms)) return '--';
+            if (ms < 1000) return `${ms.toFixed(0)} ms`;
+            const totalSeconds = ms / 1000;
+            if (totalSeconds < 60) return `${totalSeconds.toFixed(2)} s`;
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds - minutes * 60;
+            if (minutes < 60) return `${minutes}m ${seconds.toFixed(1)}s`;
+            const hours = Math.floor(minutes / 60);
+            const remMinutes = minutes % 60;
+            return `${hours}h ${remMinutes}m ${seconds.toFixed(0)}s`;
+        }
+
+        function formatCursorTime(date) {
+            if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '--';
+            return new Intl.DateTimeFormat(undefined, {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                fractionalSecondDigits: 3,
+                hour12: false
+            }).format(date);
+        }
+
+        function ensureMeasurementOverlaySections() {
+            if (!measurementOverlay) return null;
+            let header = measurementOverlay.querySelector('.measurement-header');
+            let meta = measurementOverlay.querySelector('.measurement-meta');
+            let rows = measurementOverlay.querySelector('.measurement-rows');
+            if (!header || !meta || !rows) {
+                measurementOverlay.innerHTML = `
+                    <div class="measurement-header">Cursor Measurements</div>
+                    <div class="measurement-meta"></div>
+                    <div class="measurement-rows"></div>
+                `;
+                header = measurementOverlay.querySelector('.measurement-header');
+                meta = measurementOverlay.querySelector('.measurement-meta');
+                rows = measurementOverlay.querySelector('.measurement-rows');
+            }
+            if (measurementRowsEl !== rows) {
+                if (measurementRowsEl) {
+                    measurementRowsEl.removeEventListener('scroll', onMeasurementRowsScroll);
+                }
+                measurementRowsEl = rows;
+                measurementRowsEl.addEventListener('scroll', onMeasurementRowsScroll, { passive: true });
+            }
+            return { header, meta, rows };
+        }
+
+        function onMeasurementRowsScroll() {
+            if (!measurementRowsEl) return;
+            measurementRowsScrollTop = measurementRowsEl.scrollTop;
+            measurementRowsScrollHeight = measurementRowsEl.scrollHeight;
+            measurementRowsClientHeight = measurementRowsEl.clientHeight;
+        }
+
+        function rememberMeasurementRowsScrollState() {
+            if (!measurementRowsEl) return;
+            measurementRowsScrollTop = measurementRowsEl.scrollTop;
+            measurementRowsScrollHeight = measurementRowsEl.scrollHeight;
+            measurementRowsClientHeight = measurementRowsEl.clientHeight;
+        }
+
+        function restoreMeasurementRowsScrollState() {
+            if (!measurementRowsEl) return;
+            const maxScroll = Math.max(0, measurementRowsEl.scrollHeight - measurementRowsEl.clientHeight);
+            let target = Math.min(maxScroll, Math.max(0, measurementRowsScrollTop));
+            const prevMax = Math.max(0, measurementRowsScrollHeight - measurementRowsClientHeight);
+            if (prevMax > 0 && maxScroll > 0) {
+                const ratio = Math.min(1, Math.max(0, measurementRowsScrollTop / prevMax));
+                target = Math.min(maxScroll, Math.round(ratio * maxScroll));
+            }
+            measurementRowsEl.scrollTop = target;
+            measurementRowsScrollTop = target;
+            measurementRowsScrollHeight = measurementRowsEl.scrollHeight;
+            measurementRowsClientHeight = measurementRowsEl.clientHeight;
+        }
+
+        function setMeasurementOverlayMessage(message) {
+            const sections = ensureMeasurementOverlaySections();
+            if (!sections) return;
+            sections.meta.innerHTML = '';
+            sections.rows.innerHTML = `<div class="measurement-empty">${message}</div>`;
+            sections.rows.scrollTop = 0;
+            measurementRowsScrollTop = 0;
+            measurementRowsScrollHeight = sections.rows.scrollHeight;
+            measurementRowsClientHeight = sections.rows.clientHeight;
+        }
+    </script>
+
+</body>
+</html>
