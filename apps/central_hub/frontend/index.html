@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>R&D Central Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles/main.css" />
+  <link rel="icon" type="image/png" href="/assets/R&D Logo No Background.png" />
+  <style>
+    body {
+      margin: 0;
+      background: #111111;
+      overflow: hidden;
+    }
+    .shell-main {
+      position: fixed;
+      top: var(--header-h);
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #111111;
+    }
+    #page-frame {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+      background: #111111;
+    }
+  </style>
+</head>
+<body class="body-styles" style="--toolbar-h:0px;">
+  <header class="header hub-nav">
+    <div class="hub-nav-left">
+      <a href="#rig-overview" class="hub-logo-wrap" aria-label="R&D Central Hub">
+        <img class="hub-logo" src="/assets/R&D Logo No Background.png" alt="DLS Logo" onerror="this.style.display='none'" />
+      </a>
+      <nav class="hub-nav-links" aria-label="Primary">
+        <a href="#rig-overview" class="hub-nav-link" data-route="rig-overview">3D Rig Overview</a>
+        <a href="#rig-overview-panel" class="hub-nav-link" data-route="rig-overview-panel">Rig Overview</a>
+        <a href="#getting-started" class="hub-nav-link" data-route="getting-started">Getting Started</a>
+        <a href="#pdf-chart-generation" class="hub-nav-link" data-route="pdf-chart-generation">PDF Generation</a>
+        <a href="#historical-trend" class="hub-nav-link" data-route="historical-trend">Historical Trend</a>
+        <a href="https://forms.cloud.microsoft/pages/responsepage.aspx?id=EN4EnoVRF0i3jfI5MWvb7VBTrMrBH3BFs_hzwm2cGTtUNUlERlBaUVVKTzhZN1JTQlk2R00wWENLWS4u&route=shorturl" class="hub-nav-link" target="_blank" rel="noopener noreferrer">Request Form</a>
+        <a href="/pages/deploy.html" class="hub-nav-link" data-deploy-link>Deploy</a>
+      </nav>
+    </div>
+    <div class="hub-nav-right">
+      <div id="nav-time">00:00:00</div>
+      <div id="nav-date">01/01/2026</div>
+    </div>
+  </header>
+
+  <main class="shell-main">
+    <iframe id="page-frame" title="R&D Central Hub Content" src="/pages/rig_overview.html?embed=1"></iframe>
+  </main>
+
+  <script src="/assets/nav-clock.js" defer></script>
+  <script src="/assets/deploy-access.js" defer></script>
+  <script>
+    const ROUTES = {
+      "rig-overview": "/pages/rig_overview.html?embed=1&view=scene",
+      "rig-overview-panel": "/pages/rig_overview.html?embed=1&view=panel",
+      "getting-started": "/pages/getting_started.html?embed=1",
+      "pdf-chart-generation": "/pages/pdf_chart_generation.html?embed=1",
+      "historical-trend": "/pages/historical_trend.html?embed=1",
+    };
+
+    function syncRoute() {
+      const hashRoute = (window.location.hash || "#rig-overview").replace(/^#/, "");
+      const route = Object.prototype.hasOwnProperty.call(ROUTES, hashRoute) ? hashRoute : "rig-overview";
+      if (hashRoute !== route) window.location.hash = `#${route}`;
+
+      const frame = document.getElementById("page-frame");
+      const target = ROUTES[route];
+      if (frame && frame.getAttribute("src") !== target) frame.setAttribute("src", target);
+
+      document.querySelectorAll(".hub-nav-link").forEach((link) => {
+        link.classList.toggle("active", link.getAttribute("data-route") === route);
+      });
+    }
+
+    window.addEventListener("hashchange", syncRoute);
+    window.addEventListener("DOMContentLoaded", syncRoute);
+  </script>
+</body>
+</html>
