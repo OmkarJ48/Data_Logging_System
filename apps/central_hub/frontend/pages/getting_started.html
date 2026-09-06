@@ -1,0 +1,725 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Getting Started</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles/main.css" />
+  <link rel="icon" type="image/png" href="/assets/R&D Logo No Background.png" />
+  <script>
+    if (new URLSearchParams(window.location.search).get("embed") === "1") {
+      document.documentElement.classList.add("embedded-mode");
+    }
+  </script>
+  <style>
+    html.embedded-mode body { --header-h: 0px !important; }
+    html.embedded-mode .header { display: none !important; }
+    :root{
+      --getting-subnav-total-h: 94px;
+    }
+    .getting-subnav-wrap{
+      position:fixed;
+      top:var(--header-h);
+      left:0;
+      right:0;
+      z-index:999;
+    }
+    .getting-subnav{
+      background:#262626;
+      border-bottom:1px solid #3f3f46;
+      padding:0 24px;
+      display:flex;
+      gap:8px;
+      overflow-x:auto;
+      scrollbar-width:none;
+      -ms-overflow-style:none;
+    }
+    .getting-subnav::-webkit-scrollbar{ display:none; }
+    .getting-subnav-primary{
+      background:#262626;
+    }
+    .getting-subnav-secondary{
+      background:#1f1f1f;
+      border-bottom:1px solid #343434;
+    }
+    .nav-sub-link{
+      color:#a3a3a3;
+      font-weight:500;
+      font-size:16px;
+      line-height:1.5;
+      text-decoration:none;
+      white-space:nowrap;
+      padding:12px 16px;
+      border-bottom:2px solid transparent;
+      transition:color .15s ease, border-color .15s ease, background .15s ease;
+    }
+    .nav-sub-link:hover{ color:#ffffff; }
+    .nav-sub-link.active{
+      color:#ffffff;
+      border-bottom-color:#667778;
+      background:rgba(255,255,255,.05);
+    }
+    .nav-sub-link.secondary{
+      font-size:14px;
+      padding:10px 14px;
+    }
+    .getting-content{
+      padding:16px;
+      max-width:none;
+      margin:calc(var(--header-h) + var(--getting-subnav-total-h) + 12px) 16px 16px;
+      min-height:calc(100vh - var(--header-h) - var(--getting-subnav-total-h) - 28px);
+      height:auto;
+      overflow:visible;
+    }
+    .guide-section{
+      display:none;
+      scroll-margin-top: calc(var(--header-h) + var(--getting-subnav-total-h) + 16px);
+    }
+    .guide-section.active{ display:block; }
+  </style>
+</head>
+<body class="body-styles" style="--toolbar-h:0px;">
+  <header class="header hub-nav">
+    <div class="hub-nav-left">
+      <a href="/pages/rig_overview.html?view=scene" class="hub-logo-wrap">
+        <img class="hub-logo" src="/assets/R&D Logo No Background.png" alt="DLS Logo" onerror="this.style.display='none'" />
+      </a>
+      <nav class="hub-nav-links" aria-label="Primary">
+        <a href="/pages/rig_overview.html?view=scene" class="hub-nav-link">3D Rig Overview</a>
+        <a href="/pages/rig_overview.html?view=panel" class="hub-nav-link">Rig Overview</a>
+        <a href="/pages/getting_started.html" class="hub-nav-link active">Getting Started</a>
+        <a href="/pages/pdf_chart_generation.html" class="hub-nav-link">PDF Generation</a>
+        <a href="/pages/historical_trend.html" class="hub-nav-link">Historical Trend</a>
+        <a href="https://forms.cloud.microsoft/pages/responsepage.aspx?id=EN4EnoVRF0i3jfI5MWvb7VBTrMrBH3BFs_hzwm2cGTtUNUlERlBaUVVKTzhZN1JTQlk2R00wWENLWS4u&route=shorturl" class="hub-nav-link" target="_blank" rel="noopener noreferrer">Request Form</a>
+        <a href="/pages/deploy.html" class="hub-nav-link" data-deploy-link>Deploy</a>
+      </nav>
+    </div>
+    <div class="hub-nav-right">
+      <div id="nav-time">00:00:00</div>
+      <div id="nav-date">01/01/2026</div>
+    </div>
+  </header>
+  <div class="getting-subnav-wrap">
+    <div id="getting-primary-nav" class="getting-subnav getting-subnav-primary"></div>
+    <div id="getting-secondary-nav" class="getting-subnav getting-subnav-secondary"></div>
+  </div>
+  <main class="content getting-content">
+<article>
+  <section id="getting-started-overview" class="guide-section">
+    <h2>Overview</h2>
+    <video autoplay loop muted playsinline>
+      <source src="/assets/getting-started-media/Control Panel Model/Control Panel Rotation Doorless.mp4" type="video/mp4">
+    </video>
+    <p>The Data Logging Information Centre provides easily accessible videos and images to guide you through using the data logging system. Whether youâ€™re setting up channels, monitoring live data, or reviewing logs, these resources will help you get up to speed quickly.</p>
+  </section>
+
+  <section id="pressure-display" class="guide-section">
+    <h2>Pressure Display</h2>
+    <p>Overview of the Pressure Display interface and functions. Choose a subheading under Pressure Display to view specific guides.</p>
+    <img src="/assets/getting-started-media/Pressure%20Display/Pressure%20Display%20Overview.png" alt="Pressure Display Overview" class="screenshot">
+    <ol>
+      <li>Returns to the main menu screen.</li>
+      <li>Prompt bar providing guidance throughout testing.</li>
+      <li>Measurement display box.</li>
+      <li>Configuration button to select channels.</li>
+      <li>Control button for operating pneumatic actuators and motors.</li>
+      <li>Emergency stop button.</li>
+      <li>Valve status indicator.</li>
+    </ol>
+  </section>
+
+  <section id="channel-selector" class="guide-section">
+    <h2>Channel Selector</h2>
+    <video controls>
+      <source src="/assets/getting-started-media/Pressure%20Display/Channel%20Selector.mp4" type="video/mp4">
+    </video>
+    <ul>
+      <li>Open the channel selector interface on your screen.</li>
+      <li>Select the channel you want to display.</li>
+      <li>Click to confirm your selection.</li>
+    </ul>
+  </section>
+
+  <section id="channel-configuration" class="guide-section">
+    <h2>Channel Configuration</h2>
+    <video controls>
+      <source src="/assets/getting-started-media/Pressure%20Display/Channel%20Configuration.mp4" type="video/mp4">
+    </video>
+    <ul>
+      <li>Click the name of the channel you want to configure.</li>
+      <li>Update Max Range, Gauge Code and Transducer Code.</li>
+      <li>Review all parameters, then close the tab when finished.</li>
+    </ul>
+    <p><strong>Note:</strong> Calibration Offset is used to adjust the zero point of the measurement.</p>
+  </section>
+
+  <section id="channel-monitor" class="guide-section">
+    <h2>Channel Monitor</h2>
+    <video controls>
+      <source src="/assets/getting-started-media/Pressure%20Display/Channel%20Monitor.mp4" type="video/mp4">
+    </video>
+    <ul>
+      <li>Find the list of available channels displayed on the screen.</li>
+      <li>Click the name of the channel you want to monitor.</li>
+      <li>Choose â€˜Monitor Onlyâ€™ to view the channel without displaying on the finished cert/graph.</li>
+    </ul>
+    <p><strong>Note:</strong> All channels are recorded in the background.</p>
+  </section>
+
+  <section id="start-button" class="guide-section">
+    <h2>Start Button</h2>
+    <img src="/assets/getting-started-media/Start%20Button/Start%20Button%20Overview.png" alt="Start Button Overview" class="screenshot">
+    <ol><li>Button to open Start dialogs.</li></ol>
+    <ol style="margin-bottom: 20px;"></ol>
+    <div class="notes">
+      <strong>Note:</strong>
+      <ul><li>There are 5 different start dialogs depending on the selected test.</li></ul>
+    </div>
+  </section>
+
+  <section id="start-automation" class="guide-section">
+    <h2>Start Automation</h2>
+    <video controls>
+      <source src="/assets/getting-started-media/Start%20Button/Start%20Automation.mp4" type="video/mp4">
+    </video>
+    <ul>
+      <li>Click the start button for the dialog box.</li>
+      <li>Enter the required information in the fields provided.</li>
+      <li>Click Start to begin the test.</li>
+    </ul>
+    <p><strong>Note:</strong> The Open and Close programme includes an additional allowable drop input, which can be toggled between percentage and psi. This is used to calculate stabilisation when performing an open and close operation with equalised pressure.</p>
+  </section>
+
+  <section id="start-cycles" class="guide-section">
+    <h2>Start Cycles</h2>
+    <video controls>
+      <source src="/assets/getting-started-media/Start%20Button/Start%20Cycles.mp4" type="video/mp4">
+    </video>
+    <ul>
+      <li>Click the start button for the dialog box.</li>
+      <li>Enter the required information in the fields provided.</li>
+      <li>Click Start to begin the test.</li>
+    </ul>
+    <p><strong>Note:</strong> The tick boxes represent recorded cycles. Depending on the operation, the programme will either automatically calculate the breakout value or prompt you to enter it manually.</p>
+  </section>
+
+  <section id="start-hold" class="guide-section">
+    <h2>Start Hold</h2>
+    <video controls>
+      <source src="/assets/getting-started-media/Start%20Button/Start%20Hold.mp4" type="video/mp4">
+    </video>
+    <ul>
+      <li>Click the start button for the dialog box.</li>
+      <li>Enter the required information in the fields provided.</li>
+      <li>Click Start to begin the test.</li>
+    </ul>
+  </section>
+
+  <section id="start-temperature" class="guide-section">
+    <h2>Start Temperature</h2>
+    <video controls>
+      <source src="/assets/getting-started-media/Start%20Button/Start%20Temp.mp4" type="video/mp4">
+    </video>
+    <ul>
+      <li>Click the start button for the dialog box.</li>
+      <li>Enter the required information in the fields provided.</li>
+      <li>Click Start to begin the test.</li>
+    </ul>
+  </section>
+
+  <section id="trend" class="guide-section">
+    <h2>Trend</h2>
+    <p>Overview of the Trend interface and functions. Choose a subheading under Trend to view specific guides.</p>
+    <img src="/assets/getting-started-media/Trend/Trend%20Overview.png" alt="Trend Overview" class="screenshot">
+    <ol class="steps-list">
+      <li>Returns to the main menu screen.</li>
+      <li>Prompt bar providing guidance throughout testing.</li>
+      <li>Live trend display.</li>
+      <li>Channel configuration key.</li>
+      <li>Channel configuration display.</li>
+      <li>Time window.</li>
+      <li>Live trend pause.</li>
+    </ol>
+
+     <ol style="margin-bottom: 20px;"></ol>
+
+    <div class="notes">
+      <strong>Note:</strong>
+      <ul>
+        <li>Left-click & drag (or one-finger drag on touch) â†’ Pan (in Pan mode) or draw zoom box (in Zoom mode).</li>
+        <li>Shift + Left-click & drag (or two-finger drag on touch) â†’ Pan (if in Zoom mode).</li>
+        <li>Scroll wheel (or pinch in/out on touch) â†’ Zoom centred on cursor/touch point.</li>
+        <li>Double-click (plot) â†’ Reset axes to default view.</li>
+        <li>Double-click (legend item) â†’ Isolate that trace.</li>
+        <li>Single-click (legend item) â†’ Hide/show that trace.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="trend-zoom" class="guide-section">
+    <h2>Trend Zoom</h2>
+    <video controls>
+      <source src="/assets/getting-started-media/Trend/Trend%20Zoom.mp4" type="video/mp4">
+    </video>
+    <ul>
+      <li>Drag to select the area you want to zoom.</li>
+      <li>Release to apply.</li>
+      <li>Double-click to exit zoom mode.</li>
+    </ul>
+  </section>
+
+  <section id="trend-history" class="guide-section">
+    <h2>Trend History</h2>
+    <video controls>
+      <source src="/assets/getting-started-media/Trend/Trend%20History.mp4" type="video/mp4">
+    </video>
+    <ul>
+      <li>Pause live trend.</li>
+      <li>Drag on the bottom axis to select the time range.</li>
+      <li>Double-click to exit.</li>
+      <li>Press play to resume live trend.</li>
+    </ul>
+  </section>
+
+  <section id="trend-window" class="guide-section">
+    <h2>Trend Window</h2>
+    <video controls>
+      <source src="/assets/getting-started-media/Trend/Trend%20Window.mp4" type="video/mp4">
+    </video>
+    <ul>
+      <li>Click the dropdown window.</li>
+      <li>Select from the available options.</li>
+    </ul>
+  </section>
+
+  <section id="details" class="guide-section">
+    <h2>Details</h2>
+    <p>Overview of the Details interface and functions. Choose a subheading under Details to view specific guides.</p>
+    <img src="/assets/getting-started-media/Details/Details%20Overview.png" alt="Details Overview" class="screenshot">
+    <ol>
+      <li>Returns to the main menu screen.</li>
+      <li>Required Test Details.</li>
+      <li>Test Details entry boxes.</li>
+      <li>Test Details save button.</li>
+      <li>Test Details load button.</li>
+      <li>Clear old Test Details.</li>
+    </ol>
+  </section>
+
+  <section id="detail-entry" class="guide-section">
+    <h2>Detail Entry</h2>
+    <video controls>
+      <source src="/assets/getting-started-media/Details/Details%20Entry.mp4" type="video/mp4">
+    </video>
+    <ul>
+      <li>Click the 'Test Detail Entry' box.</li>
+      <li>Enter the required information in the fields provided.</li>
+    </ul>
+  </section>
+
+  <section id="detail-save" class="guide-section">
+    <h2>Detail Save</h2>
+    <video controls>
+      <source src="/assets/getting-started-media/Details/Details%20Save.mp4" type="video/mp4">
+    </video>
+    <ul>
+      <li>Click the 'Save' button to save your details.</li>
+      <li>Confirm the save action when prompted.</li>
+      <li>Your details will now be saved and can be accessed later.</li>
+    </ul>
+  </section>
+
+  <section id="detail-load" class="guide-section">
+    <h2>Detail Load</h2>
+    <video controls>
+      <source src="/assets/getting-started-media/Details/Details%20Load.mp4" type="video/mp4">
+    </video>
+    <ul>
+      <li>Click the 'Load' button to retrieve saved details.</li>
+      <li>Select the details you want to load from the list.</li>
+      <li>Confirm the load action when prompted.</li>
+      <li>Your selected details will now be displayed.</li>
+    </ul>
+  </section>
+
+  <section id="detail-reset" class="guide-section">
+    <h2>Detail Reset</h2>
+    <video controls>
+      <source src="/assets/getting-started-media/Details/Details%20Reset.mp4" type="video/mp4">
+    </video>
+    <ul>
+      <li>Click the 'Reset' button to clear all entered details.</li>
+      <li>Confirm the reset action when prompted.</li>
+      <li>All fields will be cleared and ready for new entries.</li>
+    </ul>
+  </section>
+
+  <section id="channel-names" class="guide-section">
+    <h2>Channel Names</h2>
+    <p>Overview of the Channel Naming interface and functions. Choose a subheading under Channel Names to view specific guides.</p>
+    <img src="/assets/getting-started-media/Channel Names/Channel Name Overview.png" alt="Channel Names Overview" class="screenshot">
+    <ol>
+      <li>Returns to the main menu screen.</li>
+      <li>Required Channel Names.</li>
+      <li>Scroll Bar</li>
+      <li>Channel Names save button.</li>
+      <li>Channel Names load button.</li>
+      <li>Channel Names reset button.</li>
+    </ol>
+  </section>
+
+  <section id="channel-names-entry" class="guide-section">
+    <h2>Channel Names Entry</h2>
+    <video controls>
+      <source src="/assets/getting-started-media/Channel Names/Channel Name Change.mp4" type="video/mp4">
+    </video>
+    <ul>
+      <li>Click the 'Channel Names Entry' box.</li>
+      <li>Enter the required information in the fields provided.</li>
+    </ul>
+  </section>
+
+  <section id="channel-names-save" class="guide-section">
+    <h2>Channel Names Save</h2>
+    <video controls>
+      <source src="/assets/getting-started-media/Channel Names/Channel Save.mp4" type="video/mp4">
+    </video>
+    <ul>
+      <li>Click the 'Save' button to save your channel names.</li>
+      <li>Confirm the save action when prompted.</li>
+      <li>Your channel names will now be saved and can be accessed later.</li>
+    </ul>
+  </section>
+
+  <section id="channel-names-load" class="guide-section">
+    <h2>Channel Names Load</h2>
+    <video controls>
+      <source src="/assets/getting-started-media/Channel Names/Channel Load.mp4" type="video/mp4">
+    </video>
+    <ul>
+      <li>Click the 'Load' button to retrieve saved channel names.</li>
+      <li>Select the channel names you want to load from the list.</li>
+      <li>Confirm the load action when prompted.</li>
+      <li>Your selected channel names will now be displayed.</li>
+    </ul>
+  </section>
+
+  <section id="channel-names-reset" class="guide-section">
+    <h2>Channel Names Reset</h2>
+    <video controls>
+      <source src="/assets/getting-started-media/Channel Names/Channel Reset.mp4" type="video/mp4">
+    </video>
+    <ul>
+      <li>Click the 'Reset' button to reset the channel names to default.</li>
+      <li>Confirm the reset action when prompted.</li>
+      <li>All fields will be reset to default names.</li>
+    </ul>
+  </section>
+
+  <section id="automation" class="guide-section">
+    <h2>Automation</h2>
+    <p>Overview of the Automation interface and functions. Choose a subheading under Automation to view specific guides.</p>
+    <img src="/assets/getting-started-media/Automation/Automation%20Overview.png" alt="Automation Overview" class="screenshot">
+    <ol>
+      <li>Returns to the main menu screen.</li>
+      <li>Test list display.</li>
+      <li>Test Details overview.</li>
+      <li>Test list search bar.</li>
+      <li>Test load button.</li>
+    </ol>
+  </section>
+
+  <section id="automation-setup" class="guide-section">
+    <h2>Automation Setup</h2>
+    <video controls>
+      <source src="/assets/getting-started-media/Automation/Automation.mp4" type="video/mp4">
+    </video>
+    <ul>
+      <li>Select the test you want to perform.</li>
+      <li>Check test description if it aligns with your requirements.</li>
+      <li>Click 'Load' to go to the Alarm page.</li>
+    </ul>
+     <p><strong>Note:</strong> The test description can be cross-referenced with the work procedure description.</p>
+  </section>
+
+  <section id="alarm" class="guide-section">
+    <h2>Alarm</h2>
+    <p>Overview of the Alarm interface and functions.</p>
+    <img src="/assets/getting-started-media/Alarms/Alarm%20Overview.png" alt="Alarm" class="screenshot">
+    <ol>
+      <li>Returns to the main menu screen.</li>
+      <li>High alarm threshold settings.</li>
+      <li>Low alarm threshold settings.</li>
+      <li>Back seat alarm activation.</li>
+      <li>Temperature monitor activation.</li>
+      <li>Operation mode selection.</li>
+      <li>Test pressure input.</li>
+    </ol>
+    <p><strong>Note:</strong> Alarm settings automatically adjust based on the selected operation mode and programme, but can be manually modified if required.</p>
+  </section>
+
+  <section id="alarm-manual" class="guide-section">
+    <h2>Manual</h2>
+    <video controls>
+      <source src="/assets/getting-started-media/Alarms/Alarm%20Manual.mp4" type="video/mp4">
+    </video>
+    <ul>
+      <li>Select 'Manual' from the operation list.</li>
+      <li>Enter test pressure.</li>
+      <li>Check automated alarm settings based on your test.</li>
+    </ul>
+  </section>
+
+  <section id="alarm-hydraulic" class="guide-section">
+    <h2>Hydraulic</h2>
+    <video controls>
+      <source src="/assets/getting-started-media/Alarms/Alarm%20Hydraulic.mp4" type="video/mp4">
+    </video>
+    <ul>
+      <li>Select 'Hydraulic' from the operation list.</li>
+      <li>Enter test pressure.</li>
+      <li>Enter actuator pressure.</li>
+      <li>Check automated alarm settings based on your test.</li>
+    </ul>
+  </section>
+
+  <section id="alarm-torque" class="guide-section">
+    <h2>Torque</h2>
+    <video controls>
+      <source src="/assets/getting-started-media/Alarms/Alarm%20Torque.mp4" type="video/mp4">
+    </video>
+    <ul>
+      <li>Select 'Torque' from the operation list.</li>
+      <li>Enter test pressure.</li>
+      <li>Enter torque limits.</li>
+      <li>Check automated alarm settings based on your test.</li>
+    </ul>
+    <p><strong>Note:</strong> You can switch between torque limit and position.</p>
+  </section>
+
+  <section id="alarm-pneumatic" class="guide-section">
+    <h2>Pneumatic</h2>
+    <video controls>
+      <source src="/assets/getting-started-media/Alarms/Alarm%20Pneumatic.mp4" type="video/mp4">
+    </video>
+    <ul>
+      <li>Select 'Pneumatic' from the operation list.</li>
+      <li>Enter test pressure.</li>
+      <li>Check automated alarm settings based on your test.</li>
+    </ul>
+    <p><strong>Note:</strong> You can monitor maximum torque if using a torque transducer.</p>
+  </section>
+
+  <section id="alarm-electro-mechanical" class="guide-section">
+    <h2>Electro-Mechanical</h2>
+    <video controls>
+      <source src="/assets/getting-started-media/Alarms/Alarm%20Electro-Mechanical.mp4" type="video/mp4">
+    </video>
+    <ul>
+      <li>Select 'Electro-Mechanical' from the operation list.</li>
+      <li>Enter test pressure.</li>
+      <li>Check automated alarm settings based on your test.</li>
+    </ul>
+    <p><strong>Note:</strong> You can monitor maximum torque if using a torque transducer.</p>
+  </section>
+
+  <section id="alarm-backseat-temperature" class="guide-section">
+    <h2>Backseat & Temperature</h2>
+    <video controls>
+      <source src="/assets/getting-started-media/Alarms/Alarm%20Backseat%20Temperature.mp4" type="video/mp4">
+    </video>
+    <ul>
+      <li>Click the 'Backseat' button.</li>
+      <li>Enter backseat High and Low alarm thresholds.</li>
+      <li>Click the 'Temperature' button.</li>
+      <li>Enter temperature High and Low alarm thresholds.</li>
+    </ul>
+  </section>
+
+  <section id="SEW" class="guide-section">
+    <h2>SEW</h2>
+    <img src="/assets/getting-started-media/SEW/SEW%20Overview.png" alt="SEW" class="screenshot">
+    <ol>
+      <li>Motor speed.</li>
+      <li>Acceleration time.</li>
+      <li>Deceleration time.</li>
+      <li>Setpoint torque after motor release.</li>
+      <li>Distance over which the torque value is ignored.</li>
+      <li>Motor speed for initial cycle.</li>
+      <li>Duration the torque motor applies the setpoint torque.</li>
+    </ol>
+  </section>
+
+  <section id="previous-pdf" class="guide-section">
+    <h2>Previous PDF</h2>
+    <video controls>
+      <source src="/assets/getting-started-media/Previous%20PDF/Previous%20PDF.mp4" type="video/mp4">
+    </video>
+    <ul><li>Previous PDF allows users to view and compare past test results.</li></ul>
+  </section>
+
+  <section id="historical-trend" class="guide-section">
+    <h2>Historical Trend</h2>
+    <video controls>
+      <source src="/assets/getting-started-media/Historical%20Trend/Historical%20Trend.mp4" type="video/mp4">
+    </video>
+    <ul>
+      <li>Navigate to the desired folder containing your CSV files.</li>
+      <li>Select your desired CSV files for the trend and test detail analysis.</li>
+    </ul>
+  </section>
+
+  <section id="comments" class="guide-section">
+    <h2>Comments</h2>
+    <p>Overview of Comments functionality. Select a subheading to learn more.</p>
+    <video controls>
+      <source src="/assets/getting-started-media/Comments/Comments.mp4" type="video/mp4">
+    </video>
+    <ul>
+      <li>Comments allow users to add notes or observations related to the test.</li>
+      <li>Click on the comments section to add your input.</li>
+      <li>Save your comments for future reference.</li>
+    </ul>
+    <p><strong>Note:</strong> Comments are saved in the same location as the test data with each comment timestamped.</p>
+  </section>
+</article>
+
+  </main>
+  <script src="/assets/nav-clock.js" defer></script>
+  <script src="/assets/deploy-access.js" defer></script>
+  <script>
+    const GETTING_STARTED_GROUPS = [
+      { id: "overview", label: "Overview", items: [{ id: "getting-started-overview", label: "Overview" }] },
+      { id: "pressure", label: "Pressure Display", items: [
+        { id: "pressure-display", label: "Overview" },
+        { id: "channel-selector", label: "Channel Selector" },
+        { id: "channel-configuration", label: "Channel Configuration" },
+        { id: "channel-monitor", label: "Channel Monitor" }
+      ] },
+      { id: "start", label: "Start Button", items: [
+        { id: "start-button", label: "Overview" },
+        { id: "start-automation", label: "Automation" },
+        { id: "start-cycles", label: "Cycles" },
+        { id: "start-hold", label: "Hold" },
+        { id: "start-temperature", label: "Temperature" }
+      ] },
+      { id: "trend", label: "Trend", items: [
+        { id: "trend", label: "Overview" },
+        { id: "trend-zoom", label: "Zoom" },
+        { id: "trend-history", label: "History" },
+        { id: "trend-window", label: "Window" }
+      ] },
+      { id: "details-group", label: "Details", items: [
+        { id: "details", label: "Overview" },
+        { id: "detail-entry", label: "Entry" },
+        { id: "detail-save", label: "Save" },
+        { id: "detail-load", label: "Load" },
+        { id: "detail-reset", label: "Reset" }
+      ] },
+      { id: "channel-names-group", label: "Channel Names", items: [
+        { id: "channel-names", label: "Overview" },
+        { id: "channel-names-entry", label: "Entry" },
+        { id: "channel-names-save", label: "Save" },
+        { id: "channel-names-load", label: "Load" },
+        { id: "channel-names-reset", label: "Reset" }
+      ] },
+      { id: "automation-group", label: "Automation", items: [
+        { id: "automation", label: "Overview" },
+        { id: "automation-setup", label: "Setup" }
+      ] },
+      { id: "alarm-group", label: "Alarm", items: [
+        { id: "alarm", label: "Overview" },
+        { id: "alarm-manual", label: "Manual" },
+        { id: "alarm-hydraulic", label: "Hydraulic" },
+        { id: "alarm-torque", label: "Torque" },
+        { id: "alarm-pneumatic", label: "Pneumatic" },
+        { id: "alarm-electro-mechanical", label: "Electro-Mechanical" },
+        { id: "alarm-backseat-temperature", label: "Backseat & Temperature" }
+      ] },
+      { id: "sew", label: "SEW", items: [{ id: "SEW", label: "SEW" }] },
+      { id: "previous-pdf-group", label: "Previous PDF", items: [{ id: "previous-pdf", label: "Previous PDF" }] },
+      { id: "historical-trend-group", label: "Historical Trend", items: [{ id: "historical-trend", label: "Historical Trend" }] },
+      { id: "comments-group", label: "Comments", items: [{ id: "comments", label: "Comments" }] }
+    ];
+
+    function groupForSection(sectionId) {
+      return GETTING_STARTED_GROUPS.find((group) => group.items.some((item) => item.id === sectionId)) || GETTING_STARTED_GROUPS[0];
+    }
+
+    function renderPrimaryNav(activeGroupId) {
+      const host = document.getElementById("getting-primary-nav");
+      if (!host) return;
+      host.innerHTML = "";
+
+      GETTING_STARTED_GROUPS.forEach((group) => {
+        const firstItem = group.items[0];
+        const link = document.createElement("a");
+        link.href = `#${firstItem.id}`;
+        link.className = "nav-sub-link";
+        link.textContent = group.label;
+        if (group.id === activeGroupId) link.classList.add("active");
+        host.appendChild(link);
+      });
+    }
+
+    function renderSecondaryNav(activeGroupId, activeSectionId) {
+      const host = document.getElementById("getting-secondary-nav");
+      if (!host) return;
+      host.innerHTML = "";
+
+      const group = GETTING_STARTED_GROUPS.find((entry) => entry.id === activeGroupId);
+      if (!group) return;
+
+      group.items.forEach((item) => {
+        const link = document.createElement("a");
+        link.href = `#${item.id}`;
+        link.className = "nav-sub-link secondary";
+        link.textContent = item.label;
+        if (item.id === activeSectionId) link.classList.add("active");
+        host.appendChild(link);
+      });
+    }
+
+    function resetGettingStartedScroll() {
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    }
+
+    function queueGettingStartedScrollReset() {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(resetGettingStartedScroll);
+      });
+    }
+
+    function routeGettingStarted() {
+      const sections = Array.from(document.querySelectorAll(".guide-section"));
+      const validIds = new Set(sections.map((section) => section.id));
+      const fallbackId = "getting-started-overview";
+      const hashId = (location.hash || "").replace(/^#/, "");
+      const targetId = validIds.has(hashId) ? hashId : fallbackId;
+      const activeGroup = groupForSection(targetId);
+
+      if (hashId !== targetId) {
+        history.replaceState(null, "", `#${targetId}`);
+      }
+
+      sections.forEach((section) => {
+        section.classList.toggle("active", section.id === targetId);
+      });
+
+      renderPrimaryNav(activeGroup.id);
+      renderSecondaryNav(activeGroup.id, targetId);
+
+      queueGettingStartedScrollReset();
+    }
+
+    window.addEventListener("hashchange", routeGettingStarted);
+    window.addEventListener("DOMContentLoaded", routeGettingStarted);
+    window.addEventListener("load", routeGettingStarted);
+  </script>
+</body>
+</html>

@@ -1,0 +1,1768 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Rig Overview</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles/main.css" />
+  <script>
+    if (new URLSearchParams(window.location.search).get("embed") === "1") {
+      document.documentElement.classList.add("embedded-mode");
+    }
+  </script>
+  <style>
+    html.embedded-mode body { --header-h: 0px !important; }
+    html.embedded-mode .header { display: none !important; }
+    :root {
+      --bg-0: #0b0d12;
+      --bg-1: #0f1420;
+      --edge: rgba(255,255,255,0.08);
+      --text: #e7ecf7;
+      --muted: #b8c2d9;
+      --accent: #b9d2ff;
+    }
+
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      background: radial-gradient(1200px 800px at 10% 10%, #121826 0%, #0b0d12 50%, #090b10 100%);
+      color: var(--text);
+      font: 14px/1.45 Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      overflow: hidden;
+    }
+
+    #app { position: relative; height: calc(100% - var(--header-h)); margin-top: var(--header-h); }
+    canvas { display: block; }
+
+    .vignette {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(80% 70% at 50% 50%, rgba(0,0,0,0) 60%, rgba(0,0,0,0.25) 100%);
+      mix-blend-mode: multiply;
+    }
+
+    .actions {
+      position: absolute;
+      right: 12px;
+      bottom: 12px;
+      display: flex;
+      gap: 8px;
+      z-index: 8;
+    }
+    .btn {
+      appearance: none;
+      border: 1px solid var(--edge);
+      color: var(--text);
+      background: rgba(16,20,30,0.7);
+      padding: 8px 10px;
+      border-radius: 12px;
+      cursor: pointer;
+      font: 600 13px/1 Inter, system-ui, sans-serif;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+      backdrop-filter: blur(6px);
+      transition: transform .12s ease, background .12s ease, border-color .12s ease;
+    }
+    .btn:hover {
+      transform: translateY(-1px);
+      background: rgba(20,24,36,0.8);
+      border-color: rgba(255,255,255,0.18);
+    }
+
+    /* Top-right info panel â€” polished glass card */
+    .info {
+      position: absolute;
+      top: calc(var(--header-h) + 12px);
+      right: 12px;
+      min-width: 300px;
+      max-width: 500px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      color: #eaf0ff;
+      background: linear-gradient(180deg, rgba(20,25,40,0.82), rgba(16,20,30,0.78));
+      border: 1px solid rgba(255,255,255,0.06);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.03);
+      backdrop-filter: blur(12px) saturate(125%);
+      pointer-events: auto;
+      opacity: 0;
+      transform: translateY(-6px) scale(.985);
+      transition: opacity .18s ease, transform .18s ease, box-shadow .25s ease;
+      isolation: isolate;
+    }
+    /* Subtle gradient ring */
+    .info::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 16px;
+      padding: 1px;
+      background: linear-gradient(135deg, var(--ring-a), var(--ring-b));
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+      opacity: .9;
+    }
+    /* Soft top sheen */
+    .info::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 16px;
+      background: radial-gradient(120% 100% at 50% -10%, rgba(255,255,255,0.12), rgba(255,255,255,0) 45%);
+      pointer-events: none;
+    }
+
+    .info.show { opacity: 1; transform: translateY(0) scale(1); }
+    .info h4 {
+      margin: 0 0 10px 0;
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: 0.2px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .info .meta  { font-size: 15px; color: var(--muted); }
+    .info .empty { color: var(--muted); }
+
+    .info .grid {
+      display: grid;
+      grid-template-columns: 96px 1fr;
+      gap: 8px 12px;
+      align-items: start;
+    }
+    .info .label { color: #cbd5e1; opacity: .85; }
+    .info .value { color: #fff; }
+
+    .info .divider {
+      height: 1px;
+      background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.08), rgba(255,255,255,0));
+      margin: 10px 0;
+    }
+
+    .info .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
+      font-weight: 600;
+      font-size: 15px;
+      letter-spacing: .2px;
+    }
+
+    .info h4 .dot, .info .pill .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      flex: 0 0 auto;
+      box-shadow: 0 0 0 2px rgba(255,255,255,0.1), 0 0 14px var(--dot-shadow);
+      background: var(--dot-colour);
+      position: relative;
+    }
+    .info h4 .dot::after {
+      content: "";
+      position: absolute;
+      inset: -6px;
+      border-radius: inherit;
+      background: radial-gradient(circle, var(--dot-shadow), rgba(0,0,0,0) 60%);
+      opacity: .6;
+      filter: blur(6px);
+    }
+
+    .info.logged-in {
+      --ring-a: #ff8e8e;
+      --ring-b: #612626;
+      --dot-colour: #ff4d4f;
+      --dot-shadow: rgba(255,77,79,.65);
+    }
+    .info.logged-out {
+      --ring-a: #6ef1a4;
+      --ring-b: #1b3f2c;
+      --dot-colour: #41d36e;
+      --dot-shadow: rgba(65,211,110,.65);
+    }
+    .info.offline {
+      --ring-a: #aeb6c7;
+      --ring-b: #4a5364;
+      --dot-colour: #98a2b3;
+      --dot-shadow: rgba(152,162,179,.6);
+    }
+    .info.nodata {
+      --ring-a: #ffd36a;
+      --ring-b: #6a5114;
+      --dot-colour: #ffcc33;
+      --dot-shadow: rgba(255,204,51,.68);
+    }
+
+    .info .kbd {
+      font: 600 10px/1 Inter, system-ui, sans-serif;
+      letter-spacing: .3px;
+      padding: 3px 6px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.04);
+      color: #eaf0ff;
+    }
+
+    .bubble-camera-orb {
+      position: absolute;
+      z-index: 9;
+      width: 58px;
+      height: 58px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.22);
+      background-size: cover;
+      background-position: center;
+      box-shadow:
+        0 10px 26px rgba(0,0,0,0.42),
+        0 0 18px rgba(145,219,255,0.24),
+        inset 0 0 0 1px rgba(255,255,255,0.12);
+      cursor: pointer;
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, -50%) scale(.9);
+      transition: opacity .14s ease, transform .14s ease, box-shadow .14s ease;
+    }
+    .bubble-camera-orb.show {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    .bubble-camera-orb:hover {
+      box-shadow:
+        0 12px 30px rgba(0,0,0,0.46),
+        0 0 22px rgba(145,219,255,0.34),
+        inset 0 0 0 1px rgba(255,255,255,0.18);
+    }
+
+    .all-rigs-panel {
+      position: absolute;
+      top: calc(var(--header-h) + 12px);
+      right: 12px;
+      bottom: 12px;
+      left: 12px;
+      overflow: hidden;
+      display: none;
+      z-index: 4;
+    }
+    .all-rigs-panel.show { display: block; }
+
+    .all-rigs-grid {
+      display: grid;
+      width: 100%;
+      height: 100%;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      grid-template-rows: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .rig-card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+      padding: 14px 16px;
+      border-radius: 16px;
+      color: #eaf0ff;
+      background: linear-gradient(180deg, rgba(20,25,40,0.82), rgba(16,20,30,0.78));
+      border: 1px solid rgba(255,255,255,0.06);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.03);
+      backdrop-filter: blur(12px) saturate(125%);
+      isolation: isolate;
+      --ring-a: #7d889f;
+      --ring-b: #2b3448;
+      --dot-colour: #a0abc1;
+      --dot-shadow: rgba(160,171,193,.55);
+    }
+    .rig-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 16px;
+      padding: 1px;
+      background: linear-gradient(135deg, var(--ring-a), var(--ring-b));
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+      opacity: .9;
+    }
+    .rig-card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 16px;
+      background: radial-gradient(120% 100% at 50% -10%, rgba(255,255,255,0.12), rgba(255,255,255,0) 45%);
+      pointer-events: none;
+    }
+
+    .rig-card h4 {
+      margin: 0 0 10px 0;
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: 0.2px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .rig-card .grid {
+      display: grid;
+      grid-template-columns: 76px 1fr;
+      grid-template-rows: auto auto auto minmax(0, 1fr);
+      gap: 8px 10px;
+      align-items: start;
+      align-content: start;
+      min-height: 0;
+      flex: 1;
+      font-size: 14px;
+      padding-bottom: 20px;
+    }
+    .rig-card .label { color: #cbd5e1; opacity: .85; }
+    .rig-card .value {
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .rig-card .value.test {
+      white-space: normal;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .rig-card .value.prompt {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      text-overflow: clip;
+      overflow: auto;
+    }
+    .rig-card .divider {
+      height: 1px;
+      background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.08), rgba(255,255,255,0));
+      margin: 10px 0;
+    }
+
+    .rig-card .app-corner {
+      position: absolute;
+      right: 16px;
+      bottom: 12px;
+      max-width: calc(100% - 32px);
+      color: #dbe7ff;
+      opacity: .88;
+      font: 600 12px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .rig-card h4 .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      flex: 0 0 auto;
+      box-shadow: 0 0 0 2px rgba(255,255,255,0.1), 0 0 14px var(--dot-shadow);
+      background: var(--dot-colour);
+      position: relative;
+    }
+    .rig-card h4 .dot::after {
+      content: "";
+      position: absolute;
+      inset: -6px;
+      border-radius: inherit;
+      background: radial-gradient(circle, var(--dot-shadow), rgba(0,0,0,0) 60%);
+      opacity: .6;
+      filter: blur(6px);
+    }
+
+    .rig-card.logged-in {
+      --ring-a: #ff8e8e;
+      --ring-b: #612626;
+      --dot-colour: #ff4d4f;
+      --dot-shadow: rgba(255,77,79,.65);
+    }
+    .rig-card.logged-out {
+      --ring-a: #6ef1a4;
+      --ring-b: #1b3f2c;
+      --dot-colour: #41d36e;
+      --dot-shadow: rgba(65,211,110,.65);
+    }
+    .rig-card.offline {
+      --ring-a: #aeb6c7;
+      --ring-b: #4a5364;
+      --dot-colour: #98a2b3;
+      --dot-shadow: rgba(152,162,179,.6);
+    }
+    .rig-card.nodata {
+      --ring-a: #ffd36a;
+      --ring-b: #6a5114;
+      --dot-colour: #ffcc33;
+      --dot-shadow: rgba(255,204,51,.68);
+    }
+
+    .rig-card.clickable {
+      cursor: pointer;
+      transition: transform .12s ease, border-color .12s ease, box-shadow .12s ease;
+    }
+    .rig-card.clickable:hover {
+      transform: translateY(-1px);
+      border-color: rgba(255,255,255,0.16);
+      box-shadow: 0 24px 66px rgba(0,0,0,0.48), inset 0 0 0 1px rgba(255,255,255,0.04);
+    }
+    .rig-card.clickable:focus-visible {
+      outline: 2px solid rgba(185,210,255,0.75);
+      outline-offset: 2px;
+    }
+    .rig-card.no-link {
+      cursor: default;
+      opacity: 0.9;
+    }
+
+    @media (max-width: 1600px) {
+      .all-rigs-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-rows: repeat(3, minmax(0, 1fr));
+      }
+    }
+    @media (max-width: 1000px) {
+      .all-rigs-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-rows: auto;
+        overflow: auto;
+      }
+      .all-rigs-panel {
+        overflow: auto;
+      }
+    }
+  </style>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body class="body-styles" style="--toolbar-h:0px;">
+  <header class="header hub-nav">
+    <div class="hub-nav-left">
+      <a href="/pages/rig_overview.html?view=scene" class="hub-logo-wrap">
+        <img class="hub-logo" src="/assets/R&D Logo No Background.png" alt="DLS Logo" onerror="this.style.display='none'" />
+      </a>
+      <nav class="hub-nav-links" aria-label="Primary">
+        <a href="/pages/rig_overview.html?view=scene" id="nav-3d-overview" class="hub-nav-link active">3D Rig Overview</a>
+        <a href="/pages/rig_overview.html?view=panel" id="nav-panel-overview" class="hub-nav-link">Rig Overview</a>
+        <a href="/pages/getting_started.html" class="hub-nav-link">Getting Started</a>
+        <a href="/pages/pdf_chart_generation.html" class="hub-nav-link">PDF Generation</a>
+        <a href="/pages/historical_trend.html" class="hub-nav-link">Historical Trend</a>
+        <a href="https://forms.cloud.microsoft/pages/responsepage.aspx?id=EN4EnoVRF0i3jfI5MWvb7VBTrMrBH3BFs_hzwm2cGTtUNUlERlBaUVVKTzhZN1JTQlk2R00wWENLWS4u&route=shorturl" class="hub-nav-link" target="_blank" rel="noopener noreferrer">Request Form</a>
+        <a href="/pages/deploy.html" class="hub-nav-link" data-deploy-link>Deploy</a>
+      </nav>
+    </div>
+    <div class="hub-nav-right">
+      <div id="nav-time">00:00:00</div>
+      <div id="nav-date">01/01/2026</div>
+    </div>
+  </header>
+  <div id="app"></div>
+  <div class="vignette"></div>
+  <div class="actions">
+    <button id="btn-reset" class="btn" title="Reset view">Reset view</button>
+  </div>
+  <div id="info" class="info" aria-live="polite">
+    <h4 id="info-title"><span class="dot"></span> Hover a marker</h4>
+    <div class="divider" style="display:none" id="info-divider"></div>
+    <div id="info-body" class="meta empty">Move the cursor over a glowing point. Click the orb to open its link.</div>
+  </div>
+  <button id="bubble-camera-orb" class="bubble-camera-orb" type="button" aria-label="Open bubble detection feed" title="Open bubble detection feed"></button>
+  <section id="all-rigs-panel" class="all-rigs-panel" aria-label="All rigs status">
+    <div id="all-rigs-grid" class="all-rigs-grid"></div>
+  </section>
+
+  <script src="/assets/nav-clock.js" defer></script>
+  <script src="/assets/deploy-access.js" defer></script>
+  <script type="module">
+    import * as THREE from "three";
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+    import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+    import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
+
+    const app = document.getElementById("app");
+    const nav3dOverview = document.getElementById("nav-3d-overview");
+    const navPanelOverview = document.getElementById("nav-panel-overview");
+    const btnResetView = document.getElementById("btn-reset");
+    const infoEl = document.getElementById("info");
+    const infoTitle = document.getElementById("info-title");
+    const infoBody = document.getElementById("info-body");
+    const infoDivider = document.getElementById("info-divider");
+    const bubbleCameraOrbEl = document.getElementById("bubble-camera-orb");
+    const allRigsPanelEl = document.getElementById("all-rigs-panel");
+    const allRigsGridEl = document.getElementById("all-rigs-grid");
+    const vignetteEl = document.querySelector(".vignette");
+    let currentViewMode = "scene";
+
+    function initialViewModeFromUrl() {
+      const view = new URLSearchParams(window.location.search).get("view");
+      return view === "panel" ? "panel" : "scene";
+    }
+
+    function syncOverviewNavState() {
+      if (!nav3dOverview || !navPanelOverview) return;
+      nav3dOverview.classList.toggle("active", currentViewMode === "scene");
+      navPanelOverview.classList.toggle("active", currentViewMode === "panel");
+    }
+
+    // ---------- Renderer
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: false,
+      powerPreference: "high-performance"
+    });
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.8));
+    renderer.setSize(app.clientWidth, app.clientHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    app.appendChild(renderer.domElement);
+
+    // ---------- Scene & camera
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0b0d12);
+    scene.fog = new THREE.Fog(0x0b0d12, 6, 14);
+
+    const camera = new THREE.PerspectiveCamera(
+      60,
+      app.clientWidth / app.clientHeight,
+      0.05,
+      100
+    );
+    camera.position.set(0.814725, 0.666561, 0.592475);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.maxPolarAngle = Math.PI * 0.5;
+    controls.minDistance = 0.35;
+    controls.maxDistance = 6.0;
+
+    // ---------- Lights
+    renderer.physicallyCorrectLights = true;
+    const hemi = new THREE.HemisphereLight(0xbcc7ff, 0x0b0d12, 0.5);
+    scene.add(hemi);
+    const dir = new THREE.DirectionalLight(0xffffff, 1.1);
+    dir.position.set(3, 5, 2);
+    dir.castShadow = true;
+    dir.shadow.mapSize.set(1024, 1024);
+    dir.shadow.normalBias = 0.02;
+    scene.add(dir);
+
+    // Subtle ground to catch shadows
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(20, 20),
+      new THREE.ShadowMaterial({ opacity: 0.18 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.001;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    const modelRoot = new THREE.Group();
+    modelRoot.name = "ModelRoot";
+    scene.add(modelRoot);
+
+    // ---------- GLTF + DRACO loader
+    const loader = new GLTFLoader();
+    const draco = new DRACOLoader();
+    draco.setDecoderPath(
+      "https://unpkg.com/three@0.160.0/examples/jsm/libs/draco/"
+    );
+    loader.setDRACOLoader(draco);
+
+    loader.load(
+      "/assets/models/myModel.glb",
+      (gltf) => {
+        const obj = gltf.scene || gltf.scenes[0];
+        obj.traverse((o) => {
+          o.castShadow = true;
+          o.receiveShadow = true;
+        });
+        modelRoot.add(obj);
+
+        centreAndFit(obj, 1.8);
+        controls.target.set(0.247740, -0.188571, 0.009137);
+        controls.update();
+
+        addMarkers(modelRoot);               // place glowing balls
+        applyRigStatesSnapshot(latestRigStatusByName); // hydrate colours from remembered state
+        refreshRigStates();                  // refresh with live data
+      },
+      undefined,
+      (err) => {
+        console.error("Failed to load GLB:", err);
+      }
+    );
+
+    function centreAndFit(object3D, targetSize = 2) {
+      const box = new THREE.Box3().setFromObject(object3D);
+      const size = new THREE.Vector3();
+      const centre = new THREE.Vector3();
+      box.getSize(size);
+      box.getCenter(centre);
+      object3D.position.sub(centre);
+      const maxDim = Math.max(size.x, size.y, size.z);
+      if (maxDim > 0) object3D.scale.setScalar(targetSize / maxDim);
+    }
+
+    // ---------- Textures (orb + glow + badge baked into orb)
+    const textureCache = new Map(); // keys: core|rgba|b/n, glow|rgba
+
+    function makeCoreTexture(colourRGBA = "rgba(0,255,0,1)", withBadge = false) {
+      const key = `core|${colourRGBA}|${withBadge ? "b" : "n"}`;
+      if (textureCache.has(key)) return textureCache.get(key);
+
+      const s = 256;
+      const c = document.createElement("canvas");
+      c.width = c.height = s;
+      const ctx = c.getContext("2d");
+
+      // main orb gradient
+      const g = ctx.createRadialGradient(
+        s / 2,
+        s / 2,
+        s * 0.05,
+        s / 2,
+        s / 2,
+        s * 0.45
+      );
+      g.addColorStop(0.0, colourRGBA);
+      g.addColorStop(0.6, colourRGBA);
+      const edge = colourRGBA.replace(
+        /rgba\(([^,]+),([^,]+),([^,]+),\s*([^)]+)\)/,
+        (m, r, g2, b, a) => `rgba(${r},${g2},${b},0.75)`
+      );
+      g.addColorStop(1.0, edge);
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(s / 2, s / 2, s * 0.38, 0, Math.PI * 2);
+      ctx.fill();
+
+      // optional badge in top-right quadrant
+      if (withBadge) {
+        const cx = s * 0.72;
+        const cy = s * 0.28;
+        const r = s * 0.14;
+
+        // soft glow
+        const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 1.4);
+        glow.addColorStop(0, "rgba(255,240,190,0.95)");
+        glow.addColorStop(0.4, "rgba(255,210,120,0.8)");
+        glow.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r * 1.4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // badge disc
+        const badge = ctx.createLinearGradient(0, cy - r, 0, cy + r);
+        badge.addColorStop(0, "#ffe9b2");
+        badge.addColorStop(1, "#ffac42");
+        ctx.fillStyle = badge;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.lineWidth = s * 0.015;
+        ctx.strokeStyle = "rgba(70,35,0,0.6)";
+        ctx.stroke();
+
+        // tiny arrow indicating "update" / "download"
+        ctx.strokeStyle = "rgba(70,35,0,0.9)";
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.lineWidth = s * 0.025;
+
+        const ax = cx;
+        const ay = cy - r * 0.2;
+        const rr = r * 0.55;
+
+        // stem
+        ctx.beginPath();
+        ctx.moveTo(ax, ay - rr * 0.5);
+        ctx.lineTo(ax, ay + rr * 0.2);
+        ctx.stroke();
+
+        // arrow head
+        ctx.beginPath();
+        ctx.moveTo(ax - rr * 0.5, ay);
+        ctx.lineTo(ax, ay + rr * 0.6);
+        ctx.lineTo(ax + rr * 0.5, ay);
+        ctx.stroke();
+
+        // base line
+        ctx.beginPath();
+        ctx.moveTo(ax - rr * 0.6, ay + rr * 0.85);
+        ctx.lineTo(ax + rr * 0.6, ay + rr * 0.85);
+        ctx.stroke();
+      }
+
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      textureCache.set(key, tex);
+      return tex;
+    }
+
+    function makeGlowTexture(colourRGBA = "rgba(0,255,0,1)") {
+      const key = `glow|${colourRGBA}`;
+      if (textureCache.has(key)) return textureCache.get(key);
+
+      const s = 256;
+      const c = document.createElement("canvas");
+      c.width = c.height = s;
+      const ctx = c.getContext("2d");
+
+      const alpha = (a) =>
+        colourRGBA.replace(
+          /rgba\(([^,]+),([^,]+),([^,]+),\s*([^)]+)\)/,
+          (m, r, g2, b) => `rgba(${r},${g2},${b},${a})`
+        );
+
+      const grad = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+      grad.addColorStop(0.0, alpha(0.35));
+      grad.addColorStop(0.5, alpha(0.18));
+      grad.addColorStop(1.0, "rgba(0,0,0,0)");
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(s / 2, s / 2, s / 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      textureCache.set(key, tex);
+      return tex;
+    }
+
+    function makeCameraIconTexture() {
+      const key = "camera-icon";
+      if (textureCache.has(key)) return textureCache.get(key);
+
+      const s = 256;
+      const c = document.createElement("canvas");
+      c.width = c.height = s;
+      const ctx = c.getContext("2d");
+
+      const badge = ctx.createRadialGradient(s * 0.5, s * 0.45, s * 0.05, s * 0.5, s * 0.5, s * 0.48);
+      badge.addColorStop(0, "rgba(255,255,255,0.96)");
+      badge.addColorStop(0.72, "rgba(224,238,248,0.92)");
+      badge.addColorStop(1, "rgba(126,153,172,0.86)");
+      ctx.fillStyle = badge;
+      ctx.beginPath();
+      ctx.arc(s / 2, s / 2, s * 0.42, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.lineWidth = s * 0.025;
+      ctx.strokeStyle = "rgba(10,37,55,0.3)";
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(18,30,39,0.78)";
+      roundRect(ctx, s * 0.27, s * 0.38, s * 0.48, s * 0.28, s * 0.055);
+      ctx.fill();
+
+      ctx.fillStyle = "rgba(18,30,39,0.78)";
+      roundRect(ctx, s * 0.36, s * 0.31, s * 0.18, s * 0.08, s * 0.03);
+      ctx.fill();
+
+      const lens = ctx.createRadialGradient(s * 0.5, s * 0.52, 0, s * 0.5, s * 0.52, s * 0.1);
+      lens.addColorStop(0, "rgba(191,228,247,0.95)");
+      lens.addColorStop(0.62, "rgba(68,123,158,0.96)");
+      lens.addColorStop(1, "rgba(13,26,36,0.96)");
+      ctx.fillStyle = lens;
+      ctx.beginPath();
+      ctx.arc(s * 0.5, s * 0.52, s * 0.105, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "rgba(255,255,255,0.78)";
+      ctx.beginPath();
+      ctx.arc(s * 0.465, s * 0.485, s * 0.026, 0, Math.PI * 2);
+      ctx.fill();
+
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      textureCache.set(key, tex);
+      return tex;
+    }
+
+    function textureToDataUrl(texture) {
+      const source = texture?.image;
+      return source?.toDataURL ? source.toDataURL("image/png") : "";
+    }
+
+    function roundRect(ctx, x, y, width, height, radius) {
+      const r = Math.min(radius, width / 2, height / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + width - r, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+      ctx.lineTo(x + width, y + height - r);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+      ctx.lineTo(x + r, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    }
+
+    bubbleCameraOrbEl.style.backgroundImage = `url("${textureToDataUrl(makeCameraIconTexture())}")`;
+
+    function setMarkerVisual(marker, rgba, showBadge) {
+      if (!marker || !marker.userData) return;
+      const { core, glow, cameraBadge } = marker.userData;
+      const newCore = makeCoreTexture(rgba, !!showBadge);
+      const newGlow = makeGlowTexture(rgba);
+      core.material.map = newCore;
+      core.material.needsUpdate = true;
+      glow.material.map = newGlow;
+      glow.material.needsUpdate = true;
+      if (cameraBadge) {
+        cameraBadge.visible = marker.userData.cameraAvailable === true;
+      }
+      marker.userData.colour = rgba;
+    }
+
+    // ---------- Markers
+    const markers = [];
+    const markerByName = new Map();
+    const hitTargets = [];
+    const DESIRED_HIT_RADIUS = 0.04;
+
+    const markerDefs = [
+      { name: "Left Hand Large Temperature Cabinet", pos: new THREE.Vector3(-0.1555, 0.0786, -0.2450), href: "http://10.1.6.15:8080/webvisu.htm" },
+      { name: "Right Hand Large Temperature Cabinet", pos: new THREE.Vector3( 0.0290, 0.0786, -0.2450), href: "http://10.1.6.14:8080/webvisu.htm" },
+      { name: "F.A.T. Rig 1", pos: new THREE.Vector3( 0.3073, 0.0757,  0.0884), href: "http://10.1.6.10:8080/webvisu.htm" },
+      { name: "F.A.T. Rig 2", pos: new THREE.Vector3( 0.3073, 0.0757,  0.1680), href: "http://10.1.6.11:8080/webvisu.htm" },
+      { name: "F.A.T. Rig 3", pos: new THREE.Vector3( 0.4465, 0.0757,  0.1680), href: "http://10.1.6.12:8080/webvisu.htm" },
+      { name: "F.A.T. Rig 4", pos: new THREE.Vector3( 0.4465, 0.0757,  0.0884), href: "http://10.1.6.13:8080/webvisu.htm" },
+      { name: "Twinsafe Temperature Cabinet", pos: new THREE.Vector3( 0.3889, 0.0757, -0.2), href: "http://10.1.6.18:8080/webvisu.htm" },
+      { name: "Right Hand Small Temperature Cabinet", pos: new THREE.Vector3( 0.4728, 0.0833,  0.3463), href: "http://10.1.6.16:8080/webvisu.htm" },
+      { name: "Left Hand Small Temperature Cabinet", pos: new THREE.Vector3( 0.7133, 0.0833,  0.3463), href: "http://10.1.6.17:8080/webvisu.htm" },
+      { name: "Signature Rig 2", pos: new THREE.Vector3( 0.6482, 0.0769, -0.185), href: null },
+      { name: "Signature Rig 1", pos: new THREE.Vector3( 0.7831, 0.0424, -0.3625), href: "http://10.1.6.19:8080/webvisu.htm" }
+    ];
+
+    const prototypeMarkerDef = {
+      name: "Prototype",
+      pos: new THREE.Vector3(0.2211, 0.0720, -0.2566),
+      href: "http://10.1.6.40:8080/webvisu.htm",
+    };
+
+    const prototypePanelDef = { name: "Prototype", href: prototypeMarkerDef.href };
+    let prototypeAllowed = false;
+    let markersReady = false;
+
+    function ipSortKeyFromHref(href) {
+      if (!href) return Number.POSITIVE_INFINITY;
+      try {
+        const host = new URL(href, window.location.href).hostname;
+        const octets = host.split(".").map((part) => Number.parseInt(part, 10));
+        if (octets.length === 4 && octets.every((part) => Number.isInteger(part) && part >= 0 && part <= 255)) {
+          return (
+            octets[0] * 256 * 256 * 256 +
+            octets[1] * 256 * 256 +
+            octets[2] * 256 +
+            octets[3]
+          );
+        }
+      } catch {
+        return Number.POSITIVE_INFINITY;
+      }
+      return Number.POSITIVE_INFINITY;
+    }
+
+    function buildPanelDefs(includePrototype = false) {
+      const sortedBaseDefs = [...markerDefs].sort((a, b) => {
+        const sortA = ipSortKeyFromHref(a.href);
+        const sortB = ipSortKeyFromHref(b.href);
+        if (sortA !== sortB) return sortA - sortB;
+        return a.name.localeCompare(b.name);
+      });
+      if (includePrototype) {
+        // Prototype is intentionally fixed as the final panel card.
+        return [...sortedBaseDefs, prototypePanelDef];
+      }
+      return sortedBaseDefs;
+    }
+
+    let panelDefs = buildPanelDefs(false);
+
+    function removeMarkerByName(name) {
+      const marker = markerByName.get(name);
+      if (!marker) return;
+      if (hovered === marker) {
+        hovered = null;
+        renderer.domElement.style.cursor = "";
+        if (!panelHover) hideInfo();
+      }
+      marker.parent?.remove(marker);
+      markerByName.delete(name);
+      const markerIndex = markers.indexOf(marker);
+      if (markerIndex >= 0) markers.splice(markerIndex, 1);
+      const hit = marker.userData?.hit;
+      if (hit) {
+        const hitIndex = hitTargets.indexOf(hit);
+        if (hitIndex >= 0) hitTargets.splice(hitIndex, 1);
+      }
+    }
+
+    function addMarkerDefinition(root, definition) {
+      const { name, pos, href } = definition;
+      if (markerByName.has(name)) return;
+      const colour = "rgba(160,171,193,1)";
+      const marker = makeGlowBall({ name, href, initialColour: colour });
+      marker.position.copy(pos);
+      root.add(marker);
+      markers.push(marker);
+      markerByName.set(name, marker);
+      hitTargets.push(marker.userData.hit);
+    }
+
+    function setPrototypeMarkerVisibility(visible) {
+      if (!markersReady) return;
+      if (visible) {
+        addMarkerDefinition(modelRoot, prototypeMarkerDef);
+      } else {
+        removeMarkerByName(prototypeMarkerDef.name);
+      }
+    }
+
+    function makeGlowBall({ name, href, initialColour = "rgba(0,255,0,1)" }) {
+      const grp = new THREE.Group();
+      grp.userData = {
+        isMarker: true,
+        name,
+        href,
+        loggedIn: false,
+        connectionState: "unknown",
+        hasData: false,
+        updateAvailable: null,
+        cameraAvailable: false,
+        bubbleUrl: "",
+        colour: initialColour
+      };
+      grp.renderOrder = 10;
+
+      const coreMat = new THREE.SpriteMaterial({
+        map: makeCoreTexture(initialColour, false),
+        transparent: true,
+        depthTest: false,
+        depthWrite: false
+      });
+      const glowMat = new THREE.SpriteMaterial({
+        map: makeGlowTexture(initialColour),
+        transparent: true,
+        depthTest: false,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      });
+
+      const core = new THREE.Sprite(coreMat);
+      const glow = new THREE.Sprite(glowMat);
+      const cameraBadge = new THREE.Sprite(
+        new THREE.SpriteMaterial({
+          map: makeCameraIconTexture(),
+          transparent: true,
+          depthTest: false,
+          depthWrite: false
+        })
+      );
+      core.scale.set(0.14, 0.14, 0.14);
+      glow.scale.set(0.42, 0.42, 0.42);
+      cameraBadge.scale.set(0.058, 0.058, 0.058);
+      cameraBadge.position.set(0.056, 0.056, 0.01);
+      cameraBadge.visible = false;
+      grp.add(glow);
+      grp.add(core);
+      grp.add(cameraBadge);
+
+      // invisible world-space hit target
+      const hit = new THREE.Mesh(
+        new THREE.SphereGeometry(1, 8, 8),
+        new THREE.MeshBasicMaterial({ visible: false })
+      );
+      hit.name = `${name}__hit`;
+      grp.add(hit);
+
+      grp.userData.core = core;
+      grp.userData.glow = glow;
+      grp.userData.cameraBadge = cameraBadge;
+      grp.userData.hit = hit;
+
+      return grp;
+    }
+
+    function addMarkers(root) {
+      markerDefs.forEach(({ name, pos, href }) => {
+        addMarkerDefinition(root, { name, pos, href });
+      });
+      markersReady = true;
+      setPrototypeMarkerVisibility(prototypeAllowed);
+    }
+
+    // ---------- Info panel + central OPC status API logic
+    let hovered = null;
+    let panelHover = false;
+    let bubbleCameraHover = false;
+    let hoverClearTimer = null;
+    let infoStatusState = "none";
+    const panelCards = new Map();
+
+    function setInfoStatusState(state) {
+      if (infoStatusState === state) return;
+      infoStatusState = state;
+      infoEl.classList.toggle("logged-in", state === "in");
+      infoEl.classList.toggle("logged-out", state === "out");
+      infoEl.classList.toggle("offline", state === "offline");
+      infoEl.classList.toggle("nodata", state === "nodata");
+    }
+
+    infoEl.addEventListener("mouseenter", () => {
+      panelHover = true;
+    });
+    infoEl.addEventListener("mouseleave", () => {
+      panelHover = false;
+      if (!hovered) hideInfo();
+    });
+
+    function cancelHoverClear() {
+      if (hoverClearTimer !== null) {
+        clearTimeout(hoverClearTimer);
+        hoverClearTimer = null;
+      }
+    }
+
+    function clearHoveredMarker() {
+      cancelHoverClear();
+      if (bubbleCameraHover || panelHover) return;
+      hovered = null;
+      renderer.domElement.style.cursor = "";
+      hideInfo();
+    }
+
+    function scheduleHoverClear() {
+      if (!hovered || panelHover || bubbleCameraHover) return;
+      cancelHoverClear();
+      hoverClearTimer = window.setTimeout(clearHoveredMarker, 320);
+    }
+
+    function displayValue(value) {
+      if (value === undefined || value === null) return "--";
+      const text = String(value).trim();
+      return text === "" ? "--" : text;
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function displayHtml(value) {
+      return escapeHtml(displayValue(value));
+    }
+
+    function getMarkerRigId(marker, status) {
+      const statusId = status?.id;
+      if (typeof statusId === "string" && statusId.trim()) return statusId.trim();
+      const markerId = marker?.userData?.rigId;
+      if (typeof markerId === "string" && markerId.trim()) return markerId.trim();
+      return "";
+    }
+
+    function markerHasCameraSignal(status) {
+      return Boolean(status?.cameraAttached && status?.cameraSignalPresent);
+    }
+
+    function getBubbleFeedUrl(marker, status) {
+      const ip = status?.ip || marker?.userData?.ip;
+      if (!ip) return "";
+      return `http://${ip}:9000/pages/bubble_pot.html`;
+    }
+
+    function updateMarkerCameraState(marker, status) {
+      if (!marker?.userData) return;
+      const cameraAvailable = markerHasCameraSignal(status);
+      marker.userData.cameraAvailable = cameraAvailable;
+      marker.userData.bubbleUrl = cameraAvailable ? getBubbleFeedUrl(marker, status) : "";
+      if (marker.userData.cameraBadge) {
+        marker.userData.cameraBadge.visible = cameraAvailable;
+      }
+      updateBubbleCameraOrb();
+    }
+
+    function createPanelCard(definition) {
+      const card = document.createElement("article");
+      card.className = "rig-card";
+      card.innerHTML = `
+        <h4><span class="dot"></span><span class="name"></span></h4>
+        <div class="divider"></div>
+        <div class="grid">
+          <div class="label">User</div><div class="value user">--</div>
+          <div class="label">R&amp;D Ref</div><div class="value rd">--</div>
+          <div class="label">Test</div><div class="value test">--</div>
+          <div class="label">Prompt</div><div class="value prompt">--</div>
+        </div>
+        <div class="app-corner">--</div>
+      `;
+
+      card.querySelector(".name").textContent = definition.name;
+
+      if (definition.href) {
+        card.classList.add("clickable");
+        card.setAttribute("tabindex", "0");
+        card.setAttribute("role", "button");
+        card.setAttribute("aria-label", `Open ${definition.name}`);
+
+        const openRig = () => {
+          window.open(definition.href, "_blank", "noopener");
+        };
+
+        card.addEventListener("click", openRig);
+        card.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openRig();
+          }
+        });
+      } else {
+        card.classList.add("no-link");
+        card.setAttribute("aria-disabled", "true");
+      }
+
+      allRigsGridEl.appendChild(card);
+      panelCards.set(definition.name, {
+        card,
+        name: card.querySelector(".name"),
+        app: card.querySelector(".app-corner"),
+        user: card.querySelector(".user"),
+        rd: card.querySelector(".rd"),
+        test: card.querySelector(".test"),
+        prompt: card.querySelector(".prompt"),
+      });
+    }
+
+    function setPanelCardState(card, state) {
+      card.classList.toggle("logged-in", state === "in");
+      card.classList.toggle("logged-out", state === "out");
+      card.classList.toggle("offline", state === "offline");
+      card.classList.toggle("nodata", state === "nodata");
+    }
+
+    function getRigConnectionState(status) {
+      if (!status || typeof status !== "object") return "unknown";
+      const state = typeof status.connectionState === "string"
+        ? status.connectionState.trim().toLowerCase()
+        : "";
+      if (["online", "offline", "unknown", "unconfigured"].includes(state)) {
+        return state;
+      }
+      if (status.configured === false) return "unconfigured";
+      return status.online ? "online" : "offline";
+    }
+
+    function getRigVisualState(status) {
+      const connectionState = getRigConnectionState(status);
+      if (connectionState === "offline") return "offline";
+      if (connectionState !== "online") return "none";
+      if (!status?.hasData) return "nodata";
+      const user = status?.user ?? "";
+      return user && user.trim() !== "" ? "in" : "out";
+    }
+
+    function markerColourForState(state) {
+      if (state === "in") return "rgba(255,0,0,1)";
+      if (state === "out") return "rgba(0,255,0,1)";
+      if (state === "nodata") return "rgba(255,204,51,1)";
+      if (state === "offline") return "rgba(152,162,179,1)";
+      return "rgba(160,171,193,1)";
+    }
+
+    function shouldShowUpdateBadge(status) {
+      if (getRigConnectionState(status) !== "online" || !status?.hasData) return false;
+      return normaliseUpdateFlag(status?.updateAvailable) === false;
+    }
+
+    function isMarkerInteractable(marker) {
+      return !!(
+        marker &&
+        marker.userData &&
+        marker.userData.href
+      );
+    }
+
+    function isRigDataAvailable(status) {
+      return getRigConnectionState(status) === "online" && status?.hasData === true;
+    }
+
+    function resolveRigDisplayName(fallbackName, status) {
+      if (!isRigDataAvailable(status)) return fallbackName;
+      const dynamicName = status?.rigName;
+      if (dynamicName === undefined || dynamicName === null) return fallbackName;
+      const text = String(dynamicName).trim();
+      return text || fallbackName;
+    }
+
+    function resolveRigCardTitle(fallbackName, status) {
+      if (!isRigDataAvailable(status)) return fallbackName;
+      const rigNo = displayValue(status?.rigNo);
+      const rigName = resolveRigDisplayName(fallbackName, status);
+      return `${rigNo} | ${rigName}`;
+    }
+
+    function renderPanelCard(definition, status) {
+      const refs = panelCards.get(definition.name);
+      if (!refs) return;
+
+      const connectionState = getRigConnectionState(status);
+      const state = getRigVisualState(status);
+      const dataAvailable = isRigDataAvailable(status);
+      const user = dataAvailable ? status?.user ?? "" : "";
+      const appName = dataAvailable ? status?.appName ?? "" : "";
+      const logged = state === "in";
+
+      refs.name.textContent = resolveRigCardTitle(definition.name, status);
+      refs.app.textContent = dataAvailable ? displayValue(appName) : "--";
+      refs.user.textContent = logged ? displayValue(user) : "--";
+      refs.rd.textContent = logged ? displayValue(status?.rdReference) : "--";
+      refs.test.textContent = logged ? displayValue(status?.testTitle) : "--";
+      refs.prompt.textContent = logged ? displayValue(status?.currentPrompt) : "--";
+      setPanelCardState(refs.card, state);
+    }
+
+    function setPanelDefinitions(definitions) {
+      panelDefs = definitions;
+      allRigsGridEl.innerHTML = "";
+      panelCards.clear();
+      panelDefs.forEach((definition) => {
+        createPanelCard(definition);
+        renderPanelCard(definition, null);
+      });
+    }
+
+    async function applyPrototypeVisibility() {
+      try {
+        const response = await fetch("/api/deploy/access", { cache: "no-store" });
+        if (!response.ok) return;
+        const payload = await response.json();
+        const allowed = Boolean(payload && payload.allowed);
+        prototypeAllowed = allowed;
+        setPrototypeMarkerVisibility(allowed);
+        const nextDefs = buildPanelDefs(allowed);
+        const currentNames = panelDefs.map((def) => def.name).join("|");
+        const nextNames = nextDefs.map((def) => def.name).join("|");
+        if (currentNames !== nextNames) {
+          setPanelDefinitions(nextDefs);
+          applyRigStatesSnapshot(latestRigStatusByName);
+        }
+      } catch (_) {
+        // Keep prototype hidden when access checks fail.
+        prototypeAllowed = false;
+        setPrototypeMarkerVisibility(false);
+      }
+    }
+
+    const RIG_STATUS_PATH = "/api/rig-overview/status";
+    const RIG_STATUS_STORAGE_KEY = "central-hub.rig-overview.status.v1";
+    const RIG_STATUS_STORAGE_MAX_AGE_MS = 5 * 60 * 1000;
+    const rigStatusCache = { data: new Map(), ts: 0, pending: null };
+    let latestRigStatusByName = new Map();
+
+    function mapRigStatusByLabel(rigs) {
+      const byName = new Map();
+      rigs.forEach((rig) => {
+        if (rig && typeof rig.label === "string" && rig.label) {
+          byName.set(rig.label, rig);
+        }
+      });
+      return byName;
+    }
+
+    function persistRigStatusSnapshot(statusByName) {
+      if (!(statusByName instanceof Map) || statusByName.size === 0) return;
+      try {
+        const entries = Array.from(statusByName.entries());
+        sessionStorage.setItem(
+          RIG_STATUS_STORAGE_KEY,
+          JSON.stringify({ savedAt: Date.now(), entries })
+        );
+      } catch (_) {
+        // Ignore storage failures (private mode/quota/etc).
+      }
+    }
+
+    function loadPersistedRigStatusSnapshot() {
+      try {
+        const raw = sessionStorage.getItem(RIG_STATUS_STORAGE_KEY);
+        if (!raw) return new Map();
+        const parsed = JSON.parse(raw);
+        const savedAt = Number(parsed?.savedAt);
+        if (!Number.isFinite(savedAt)) return new Map();
+        if (Date.now() - savedAt > RIG_STATUS_STORAGE_MAX_AGE_MS) return new Map();
+        const entries = Array.isArray(parsed?.entries) ? parsed.entries : [];
+        const byName = new Map();
+        entries.forEach((entry) => {
+          if (!Array.isArray(entry) || entry.length !== 2) return;
+          const [name, rig] = entry;
+          if (typeof name !== "string" || !name || !rig || typeof rig !== "object") return;
+          byName.set(name, rig);
+        });
+        return byName;
+      } catch (_) {
+        return new Map();
+      }
+    }
+
+    const persistedRigStatus = loadPersistedRigStatusSnapshot();
+    if (persistedRigStatus.size > 0) {
+      latestRigStatusByName = persistedRigStatus;
+      rigStatusCache.data = persistedRigStatus;
+      rigStatusCache.ts = performance.now();
+    }
+
+    // Normalise updateAvailable: booleans or strings like "TRUE"/"FALSE"
+    function normaliseUpdateFlag(value) {
+      if (value === undefined || value === null) return null;
+      if (typeof value === "boolean") return value;
+      if (typeof value === "string") {
+        const v = value.trim().toLowerCase();
+        if (["false", "no", "0", "n"].includes(v)) return false;
+        if (["true", "yes", "1", "y"].includes(v)) return true;
+      }
+      return null;
+    }
+
+    function normaliseRigStatus(status) {
+      if (!status || typeof status !== "object") return null;
+      return status;
+    }
+
+    function applyRigStatesSnapshot(statusByName) {
+      panelDefs.forEach((definition) => {
+        const status = normaliseRigStatus(statusByName.get(definition.name));
+        const marker = markerByName.get(definition.name);
+
+        if (marker) {
+          const state = getRigVisualState(status);
+          marker.userData.loggedIn = state === "in";
+          marker.userData.connectionState = getRigConnectionState(status);
+          marker.userData.hasData = status?.hasData === true;
+          marker.userData.updateAvailable = normaliseUpdateFlag(status?.updateAvailable);
+          marker.userData.rigId = typeof status?.id === "string" ? status.id : marker.userData.rigId;
+          marker.userData.ip = typeof status?.ip === "string" ? status.ip : marker.userData.ip;
+          updateMarkerCameraState(marker, status);
+          setMarkerVisual(marker, markerColourForState(state), shouldShowUpdateBadge(status));
+
+          if (hovered === marker && currentViewMode === "scene") {
+            renderInfoFor(marker, status);
+          }
+        }
+
+        renderPanelCard(definition, status);
+      });
+
+      if (hovered && currentViewMode === "scene") {
+        renderer.domElement.style.cursor =
+          isMarkerInteractable(hovered) ? "pointer" : "";
+      }
+    }
+
+    async function fetchRigOverviewStatus() {
+      if (rigStatusCache.pending) return rigStatusCache.pending;
+      if (rigStatusCache.ts > 0 && performance.now() - rigStatusCache.ts < 800) {
+        return rigStatusCache.data;
+      }
+
+      const pending = (async () => {
+        try {
+          const res = await fetch(`${RIG_STATUS_PATH}?ts=${Date.now()}`, { cache: "no-store" });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const json = await res.json();
+          const rigs = Array.isArray(json?.rigs) ? json.rigs : [];
+          const byName = mapRigStatusByLabel(rigs);
+          rigStatusCache.data = byName;
+          rigStatusCache.ts = performance.now();
+          rigStatusCache.pending = null;
+          persistRigStatusSnapshot(byName);
+          return byName;
+        } catch (err) {
+          console.warn("rig status fetch failed", err);
+          rigStatusCache.ts = performance.now();
+          rigStatusCache.pending = null;
+          return rigStatusCache.data;
+        }
+      })();
+
+      rigStatusCache.pending = pending;
+      return pending;
+    }
+
+    async function refreshRigStates() {
+      const statusByName = await fetchRigOverviewStatus();
+      latestRigStatusByName = statusByName;
+      applyRigStatesSnapshot(statusByName);
+    }
+
+    setPanelDefinitions(panelDefs);
+    applyRigStatesSnapshot(latestRigStatusByName);
+    applyPrototypeVisibility();
+
+    function renderInfoFor(marker, status) {
+      const fallbackName = marker?.userData?.name || "Marker";
+      const connectionState = getRigConnectionState(status);
+      const dataAvailable = isRigDataAvailable(status);
+      const titleText = status ? resolveRigCardTitle(fallbackName, status) : fallbackName;
+      infoTitle.innerHTML = `<span class="dot"></span>${escapeHtml(titleText)}`;
+
+      if (status && dataAvailable) {
+        const appName = status.appName ?? "--";
+        const user = status.user ?? "";
+        const rd = status.rdReference ?? "--";
+        const title = status.testTitle ?? "--";
+        const prompt = status.currentPrompt ?? "--";
+        const logged = !!(user && user.trim() !== "");
+        setInfoStatusState(logged ? "in" : "out");
+
+        const updateAvailable = normaliseUpdateFlag(
+          Object.prototype.hasOwnProperty.call(status, "updateAvailable")
+            ? status.updateAvailable
+            : marker.userData.updateAvailable
+        );
+        marker.userData.updateAvailable = updateAvailable;
+
+        setMarkerVisual(marker, markerColourForState(logged ? "in" : "out"), updateAvailable === false);
+        marker.userData.rigId = typeof status.id === "string" ? status.id : marker.userData.rigId;
+        marker.userData.ip = typeof status.ip === "string" ? status.ip : marker.userData.ip;
+        updateMarkerCameraState(marker, status);
+
+        infoBody.classList.remove("empty");
+        infoDivider.style.display = "block";
+        infoBody.innerHTML = `
+          <div class="grid">
+            <div class="label">App</div><div class="value">${displayHtml(appName)}</div>
+            <div class="label">User</div><div class="value">${logged ? displayHtml(user) : "--"}</div>
+            <div class="label">R&amp;D Ref</div><div class="value">${logged ? displayHtml(rd) : "--"}</div>
+            <div class="label">Test</div><div class="value">${logged ? displayHtml(title) : "--"}</div>
+            <div class="label">Prompt</div><div class="value">${logged ? displayHtml(prompt) : "--"}</div>
+          </div>
+        `;
+      } else if (status && connectionState === "online") {
+        setInfoStatusState("nodata");
+        setMarkerVisual(marker, markerColourForState("nodata"), false);
+        marker.userData.rigId = typeof status.id === "string" ? status.id : marker.userData.rigId;
+        marker.userData.ip = typeof status.ip === "string" ? status.ip : marker.userData.ip;
+        updateMarkerCameraState(marker, status);
+        infoBody.classList.remove("empty");
+        infoDivider.style.display = "block";
+        infoBody.innerHTML = `<div class="meta">OPC connection is up, but no rig status variables are currently available.</div>`;
+      } else if (status && connectionState === "offline") {
+        setInfoStatusState("offline");
+        setMarkerVisual(marker, markerColourForState("offline"), false);
+        marker.userData.rigId = typeof status.id === "string" ? status.id : marker.userData.rigId;
+        marker.userData.ip = typeof status.ip === "string" ? status.ip : marker.userData.ip;
+        updateMarkerCameraState(marker, status);
+        infoBody.classList.remove("empty");
+        infoDivider.style.display = "block";
+        infoBody.innerHTML = `<div class="meta">No OPC connection. Retrying automatically.</div>`;
+      } else {
+        setInfoStatusState("none");
+        updateMarkerCameraState(marker, status);
+        infoBody.innerHTML = "";
+        infoBody.classList.add("empty");
+        infoDivider.style.display = "none";
+      }
+
+      infoEl.classList.add("show");
+    }
+
+    async function showInfo(marker) {
+      if (!marker) return;
+
+      // fallback (no live data yet)
+      renderInfoFor(marker, null);
+
+      const cachedStatus = normaliseRigStatus(latestRigStatusByName.get(marker.userData.name));
+      if (cachedStatus && marker === hovered) {
+        renderInfoFor(marker, cachedStatus);
+      }
+
+      const statusByName = await fetchRigOverviewStatus();
+      latestRigStatusByName = statusByName;
+      const liveStatus = normaliseRigStatus(statusByName.get(marker.userData.name));
+      if (marker === hovered && liveStatus) {
+        renderInfoFor(marker, liveStatus);
+      }
+    }
+
+    function hideInfo() {
+      infoTitle.innerHTML = '<span class="dot"></span> Hover a marker';
+      infoBody.classList.add("empty");
+      infoDivider.style.display = "none";
+      infoEl.classList.remove("show");
+      hideBubbleCameraOrb();
+      setInfoStatusState("none");
+    }
+
+    const bubbleCameraProjection = new THREE.Vector3();
+
+    function hideBubbleCameraOrb() {
+      bubbleCameraOrbEl.classList.remove("show");
+      bubbleCameraOrbEl.removeAttribute("data-url");
+    }
+
+    function updateBubbleCameraOrb() {
+      if (
+        currentViewMode !== "scene" ||
+        !hovered?.userData?.cameraAvailable ||
+        !hovered.userData.bubbleUrl ||
+        renderer.domElement.style.display === "none"
+      ) {
+        hideBubbleCameraOrb();
+        return;
+      }
+
+      hovered.getWorldPosition(bubbleCameraProjection);
+      bubbleCameraProjection.project(camera);
+
+      if (bubbleCameraProjection.z < -1 || bubbleCameraProjection.z > 1) {
+        hideBubbleCameraOrb();
+        return;
+      }
+
+      const rect = renderer.domElement.getBoundingClientRect();
+      const x = rect.left + ((bubbleCameraProjection.x + 1) / 2) * rect.width + 38;
+      const y = rect.top + ((-bubbleCameraProjection.y + 1) / 2) * rect.height - 38;
+
+      bubbleCameraOrbEl.style.left = `${Math.round(x)}px`;
+      bubbleCameraOrbEl.style.top = `${Math.round(y)}px`;
+      bubbleCameraOrbEl.dataset.url = hovered.userData.bubbleUrl;
+      bubbleCameraOrbEl.classList.add("show");
+    }
+
+    bubbleCameraOrbEl.addEventListener("click", () => {
+      const url = bubbleCameraOrbEl.dataset.url;
+      if (url) window.open(url, "_blank", "noopener");
+    });
+
+    bubbleCameraOrbEl.addEventListener("mouseenter", () => {
+      bubbleCameraHover = true;
+      cancelHoverClear();
+      updateBubbleCameraOrb();
+    });
+
+    bubbleCameraOrbEl.addEventListener("mouseleave", () => {
+      bubbleCameraHover = false;
+      scheduleHoverClear();
+    });
+
+    function setViewMode(mode) {
+      currentViewMode = mode === "panel" ? "panel" : "scene";
+      const panelMode = currentViewMode === "panel";
+
+      allRigsPanelEl.classList.toggle("show", panelMode);
+      renderer.domElement.style.display = panelMode ? "none" : "block";
+      if (vignetteEl) vignetteEl.style.display = panelMode ? "none" : "";
+      infoEl.style.display = panelMode ? "none" : "";
+      btnResetView.style.display = panelMode ? "none" : "";
+      syncOverviewNavState();
+
+      if (panelMode) {
+        cancelHoverClear();
+        hovered = null;
+        panelHover = false;
+        bubbleCameraHover = false;
+        renderer.domElement.style.cursor = "";
+        hideInfo();
+      } else if (!hovered) {
+        hideInfo();
+      } else {
+        updateBubbleCameraOrb();
+      }
+    }
+
+    // ---------- Interaction using hit targets
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    let downX = 0,
+      downY = 0,
+      moved = false,
+      downTime = 0;
+    const CLICK_DIST = 5;
+    const CLICK_MS = 400;
+
+    function pick(clientX, clientY) {
+      const rect = renderer.domElement.getBoundingClientRect();
+      mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(mouse, camera);
+      const hits = raycaster.intersectObjects(hitTargets, true);
+      if (!hits.length) return null;
+      let o = hits[0].object;
+      while (o && !o.parent?.userData?.isMarker) o = o.parent;
+      return o?.parent || null;
+    }
+
+    renderer.domElement.addEventListener("pointerdown", (ev) => {
+      downX = ev.clientX;
+      downY = ev.clientY;
+      moved = false;
+      downTime = performance.now();
+    });
+
+    renderer.domElement.addEventListener(
+      "pointermove",
+      (ev) => {
+        const dx = ev.clientX - downX;
+        const dy = ev.clientY - downY;
+        if (Math.hypot(dx, dy) > CLICK_DIST) moved = true;
+        const m = pick(ev.clientX, ev.clientY);
+        if (m !== hovered) {
+          if (m) {
+            cancelHoverClear();
+            hovered = m;
+            renderer.domElement.style.cursor = isMarkerInteractable(hovered) ? "pointer" : "";
+            showInfo(hovered);
+            updateBubbleCameraOrb();
+          } else if (!panelHover && !bubbleCameraHover) {
+            renderer.domElement.style.cursor = "";
+            scheduleHoverClear();
+          }
+        }
+      },
+      { passive: true }
+    );
+
+    renderer.domElement.addEventListener("pointerup", (ev) => {
+      const isClick = !moved && performance.now() - downTime < CLICK_MS;
+      if (!isClick) return;
+      const m = pick(ev.clientX, ev.clientY);
+      if (isMarkerInteractable(m)) {
+        window.open(m.userData.href, "_blank", "noopener");
+      }
+    });
+
+    // Touch support
+    renderer.domElement.addEventListener(
+      "touchstart",
+      (ev) => {
+        const t = ev.touches[0];
+        downX = t.clientX;
+        downY = t.clientY;
+        moved = false;
+        downTime = performance.now();
+        const m = pick(t.clientX, t.clientY);
+        if (m) showInfo(m);
+      },
+      { passive: true }
+    );
+
+    renderer.domElement.addEventListener(
+      "touchmove",
+      (ev) => {
+        const t = ev.touches[0];
+        const dx = t.clientX - downX;
+        const dy = t.clientY - downY;
+        if (Math.hypot(dx, dy) > CLICK_DIST) moved = true;
+      },
+      { passive: true }
+    );
+
+    renderer.domElement.addEventListener("touchend", () => {
+      const isClick = !moved && performance.now() - downTime < CLICK_MS;
+      if (!isClick) return;
+      const m = pick(downX, downY);
+      if (isMarkerInteractable(m)) {
+        window.open(m.userData.href, "_blank", "noopener");
+      }
+    });
+
+    // ---------- Animation / screen-size scaling
+    const tmp = new THREE.Vector3();
+
+    function sizeBallsToScreen() {
+      const base = DESIRED_HIT_RADIUS * 10;
+      markers.forEach((g) => {
+        g.getWorldPosition(tmp);
+        const d = camera.position.distanceTo(tmp);
+        const s = d * base * (hovered === g ? 1.25 : 1.0);
+        g.scale.setScalar(s);
+        const hit = g.userData.hit;
+        if (hit) hit.scale.setScalar(DESIRED_HIT_RADIUS / s);
+      });
+    }
+
+    function pulse(time) {
+      const t = time * 0.001;
+      markers.forEach((g) => {
+        const glow = g.userData.glow;
+        const p = Math.sin(t * 2.0) * 0.5 + 0.5;
+        glow.material.opacity = 0.22 * p + 0.14;
+        glow.scale.setScalar(0.96 + 0.13 * p);
+      });
+    }
+
+    function tick(time = 0) {
+      controls.update();
+      sizeBallsToScreen();
+      pulse(time);
+      updateBubbleCameraOrb();
+      renderer.render(scene, camera);
+      requestAnimationFrame(tick);
+    }
+    tick();
+
+    // ---------- Responsiveness
+    function resize() {
+      const w = app.clientWidth;
+      const h = app.clientHeight;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    new ResizeObserver(resize).observe(app);
+    window.addEventListener("orientationchange", resize);
+
+    // ---------- Buttons
+    btnResetView.addEventListener("click", () => {
+      camera.position.set(0.814725, 0.666561, 0.592475);
+      controls.target.set(0.247740, -0.188571, 0.009137);
+      controls.update();
+    });
+
+    setViewMode(initialViewModeFromUrl());
+    refreshRigStates();
+    setInterval(refreshRigStates, 1000);
+  </script>
+</body>
+</html>

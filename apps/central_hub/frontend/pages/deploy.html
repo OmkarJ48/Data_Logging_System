@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deploy</title>
+    <link rel="stylesheet" href="/styles/main.css">
+    <link rel="stylesheet" href="/styles/tailwind.css">
+    <style>
+        .console-container {
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            background: #000;
+            color: #fff;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-y: auto;
+            flex-grow: 1;
+            font-size: 0.875rem;
+            line-height: 1.25rem;
+            border: 1px solid #333;
+        }
+        .console-line {
+            margin-bottom: 0.25rem;
+            white-space: pre-wrap;
+        }
+        .panel {
+            background: #171717;
+            border: 1px solid #2b2b2b;
+            border-radius: 0.75rem;
+        }
+        .rig-checkbox {
+            display: none;
+        }
+        .rig-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .rig-checkbox:checked + .rig-label {
+            background: #4b5563;
+            border-color: #6b7280;
+            box-shadow: 0 0 10px rgba(107, 114, 128, 0.45);
+        }
+        .btn-success {
+            background: #4b5563;
+            border-color: #6b7280;
+            color: #fff;
+        }
+        .btn-success:hover {
+            filter: brightness(1.1);
+        }
+        .btn-lg {
+            padding: 0.75rem 1rem;
+            font-weight: 700;
+        }
+        #deployFolder::file-selector-button {
+            background: #4b5563;
+            border: 1px solid #6b7280;
+            color: #fff;
+            border-radius: 0.375rem;
+            padding: 0.5rem 1rem;
+            margin-right: 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        #deployFolder::file-selector-button:hover {
+            filter: brightness(1.08);
+        }
+        #deployFolder::-webkit-file-upload-button {
+            background: #4b5563;
+            border: 1px solid #6b7280;
+            color: #fff;
+            border-radius: 0.375rem;
+            padding: 0.5rem 1rem;
+            margin-right: 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        #deployFolder::-webkit-file-upload-button:hover {
+            filter: brightness(1.08);
+        }
+    </style>
+</head>
+<body class="body-styles flex flex-col h-screen overflow-hidden">
+    <header class="header hub-nav">
+        <div class="hub-nav-left">
+            <a href="/pages/rig_overview.html?view=scene" class="hub-logo-wrap">
+                <img class="hub-logo" src="/assets/R&D Logo No Background.png" alt="R&D Logo" onerror="this.style.display='none'" />
+            </a>
+            <nav class="hub-nav-links" aria-label="Primary">
+                <a href="/pages/rig_overview.html?view=scene" class="hub-nav-link">3D Rig Overview</a>
+                <a href="/pages/rig_overview.html?view=panel" class="hub-nav-link">Rig Overview</a>
+                <a href="/pages/getting_started.html" class="hub-nav-link">Getting Started</a>
+                <a href="/pages/pdf_chart_generation.html" class="hub-nav-link">PDF Generation</a>
+                <a href="/pages/historical_trend.html" class="hub-nav-link">Historical Trend</a>
+                <a href="https://forms.cloud.microsoft/pages/responsepage.aspx?id=EN4EnoVRF0i3jfI5MWvb7VBTrMrBH3BFs_hzwm2cGTtUNUlERlBaUVVKTzhZN1JTQlk2R00wWENLWS4u&route=shorturl" class="hub-nav-link" target="_blank" rel="noopener noreferrer">Support Ticket</a>
+                <a href="/pages/deploy.html" class="hub-nav-link active" data-deploy-link>Deploy</a>
+            </nav>
+        </div>
+        <div class="hub-nav-right">
+            <div id="nav-time">00:00:00</div>
+            <div id="nav-date">01/01/2026</div>
+        </div>
+    </header>
+
+    <main class="flex-1 flex gap-4 p-4 min-h-0 mt-[64px]">
+        <div class="flex-1 flex flex-col min-h-0">
+            <div id="console" class="console-container">
+                <div class="console-line text-gray-500 italic">Waiting for connection...</div>
+            </div>
+        </div>
+
+        <aside class="w-full max-w-[520px] flex flex-col gap-4 min-h-0 shrink-0">
+            <div class="panel p-5 flex flex-col justify-center flex-[2.4] min-h-0">
+                <h3 class="text-xs font-bold mb-3 text-gray-400 uppercase tracking-wider">Select Targets</h3>
+                <div id="rigsContainer" class="flex flex-col gap-1.5 overflow-y-auto pr-1"></div>
+            </div>
+
+            <div class="panel p-5 flex flex-col justify-between flex-[1.1] min-h-0">
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">CODESYS Update</h3>
+                <div class="flex flex-col gap-4">
+                    <div class="flex flex-col gap-2">
+                        <input type="file" id="deployFolder" webkitdirectory directory multiple class="w-full text-xs text-gray-400 file:mr-3 file:py-2 file:px-4 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-[#016644] file:text-white hover:file:bg-[#014d33] transition-colors cursor-pointer">
+                    </div>
+
+                    <p id="fileLoadStatus" class="text-[11px] text-gray-500 min-h-[18px] opacity-0 transition-opacity duration-150"></p>
+                </div>
+                <button id="deployBtn" class="btn btn-success w-full btn-lg mt-2 opacity-50 cursor-not-allowed" disabled>
+                    Start Deployment
+                </button>
+            </div>
+
+            <div class="panel p-5 flex flex-col justify-center flex-[0.7]">
+                <h3 class="text-xs font-bold mb-3 text-gray-400 uppercase tracking-wider">Git Update</h3>
+                <button id="gitPullBtn" class="btn btn-success w-full btn-lg">
+                    Git Pull + Dependencies
+                </button>
+            </div>
+        </aside>
+    </main>
+
+    <script src="/assets/nav-clock.js" defer></script>
+    <script src="/assets/deploy-access.js" defer></script>
+    <script>
+        const consoleDiv = document.getElementById('console');
+        const deployBtn = document.getElementById('deployBtn');
+        const gitPullBtn = document.getElementById('gitPullBtn');
+        const deployFolderInput = document.getElementById('deployFolder');
+        const fileLoadStatus = document.getElementById('fileLoadStatus');
+        const rigsContainer = document.getElementById('rigsContainer');
+
+        let selectedApp = null;
+        let selectedCrc = null;
+        let selectedVisuFiles = [];
+        let selectedVisuPaths = [];
+        let availableRigs = [];
+        let ws = null;
+        let deployInProgress = false;
+
+        function addLog(message, color = '') {
+            const line = document.createElement('div');
+            line.className = 'console-line';
+            if (color) line.style.color = color;
+            line.textContent = `[${new Date().toLocaleTimeString('en-GB')}] ${message}`;
+            consoleDiv.appendChild(line);
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        }
+
+        function setDeployButtonBusy(isBusy) {
+            deployInProgress = isBusy;
+            deployBtn.disabled = isBusy;
+            deployBtn.textContent = isBusy ? 'DEPLOYING...' : 'Start Deployment';
+            if (isBusy) {
+                deployBtn.classList.add('opacity-50');
+                return;
+            }
+            deployBtn.classList.remove('opacity-50');
+            updateDeployButton();
+        }
+
+        function getSelectedRigIds() {
+            return Array.from(document.querySelectorAll('.rig-checkbox:checked')).map((cb) => cb.value);
+        }
+
+        async function loadRigTargets() {
+            try {
+                const response = await fetch('/api/deploy/rigs');
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    throw new Error(err.detail || 'Failed to load rig targets');
+                }
+                const payload = await response.json();
+                availableRigs = Array.isArray(payload.rigs) ? payload.rigs : [];
+                renderRigTargets();
+            } catch (err) {
+                addLog(`ERROR: ${err.message}`, '#f00');
+                rigsContainer.innerHTML = '<div class="text-xs text-red-400">Failed to load rigs from server.</div>';
+            }
+        }
+
+        function renderRigTargets() {
+            rigsContainer.innerHTML = '';
+
+            if (!availableRigs.length) {
+                rigsContainer.innerHTML = '<div class="text-xs text-gray-400">No rig targets available.</div>';
+                return;
+            }
+
+            for (const rig of availableRigs) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'rig-item';
+
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.id = `rig_${rig.id}`;
+                input.className = 'rig-checkbox';
+                input.value = rig.id;
+                const isConfigured = Boolean(rig.ip);
+                if (!isConfigured) {
+                    input.disabled = true;
+                }
+
+                const label = document.createElement('label');
+                label.setAttribute('for', input.id);
+                label.className = 'rig-label text-sm font-semibold';
+                if (!isConfigured) {
+                    label.style.opacity = '0.45';
+                    label.style.cursor = 'not-allowed';
+                }
+
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = rig.label;
+
+                const ipSpan = document.createElement('span');
+                ipSpan.className = 'text-xs text-gray-400';
+                ipSpan.textContent = isConfigured ? rig.ip : 'Not Configured';
+
+                label.appendChild(nameSpan);
+                label.appendChild(ipSpan);
+
+                wrapper.appendChild(input);
+                wrapper.appendChild(label);
+                rigsContainer.appendChild(wrapper);
+            }
+        }
+
+        function initWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const url = `${protocol}//${window.location.host}/api/deploy/ws`;
+            ws = new WebSocket(url);
+
+            ws.onopen = () => {
+                consoleDiv.innerHTML = '';
+                addLog('Connected to deployment server.', '#0f0');
+            };
+
+            ws.onmessage = (event) => {
+                const msg = event.data;
+                let color = '';
+                if (msg.includes('ERROR')) color = '#f00';
+                else if (msg.includes('FAILED')) color = '#f00';
+                else if (msg.startsWith('>>>')) color = '#0f0';
+                else if (msg.startsWith('==>')) color = '#3b82f6';
+                addLog(msg, color);
+
+                if (msg.startsWith('>>> Deployment run finished:') || msg.startsWith('CRITICAL ERROR during deployment:')) {
+                    setDeployButtonBusy(false);
+                }
+            };
+
+            ws.onclose = (event) => {
+                if (event.code === 4003) {
+                    addLog('ACCESS DENIED: Deploy is not allowed from this IP address.', '#f00');
+                    return;
+                }
+                addLog('Disconnected from server. Retrying in 5s...', '#a50');
+                setTimeout(initWebSocket, 5000);
+            };
+        }
+
+        function updateDeployButton() {
+            if (deployInProgress) {
+                deployBtn.disabled = true;
+                return;
+            }
+            const isValid = selectedApp && selectedCrc && selectedVisuFiles.length > 0;
+            deployBtn.disabled = !isValid;
+            if (isValid) {
+                deployBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                deployBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        function updateFileLoadStatus(hasSelection, isLoaded) {
+            fileLoadStatus.classList.remove('text-gray-500', 'text-green-500', 'text-red-400');
+
+            if (!hasSelection) {
+                fileLoadStatus.textContent = '';
+                fileLoadStatus.classList.add('text-gray-500', 'opacity-0');
+                fileLoadStatus.classList.remove('opacity-100');
+                return;
+            }
+
+            fileLoadStatus.classList.remove('opacity-0');
+            fileLoadStatus.classList.add('opacity-100');
+
+            if (isLoaded) {
+                fileLoadStatus.textContent = 'Files loaded successfully.';
+                fileLoadStatus.classList.add('text-green-500');
+            } else {
+                fileLoadStatus.textContent = 'Files did not load successfully.';
+                fileLoadStatus.classList.add('text-red-400');
+            }
+        }
+
+        deployFolderInput.onchange = (e) => {
+            const files = e.target.files;
+            selectedApp = null;
+            selectedCrc = null;
+            selectedVisuFiles = [];
+            selectedVisuPaths = [];
+
+            if (files.length === 0) {
+                updateFileLoadStatus(false, false);
+                updateDeployButton();
+                return;
+            }
+
+            for (const file of files) {
+                const path = file.webkitRelativePath || file.name;
+                const parts = path.split('/');
+
+                if (parts.length === 2) {
+                    const filename = parts[1].toLowerCase();
+                    if (filename.endsWith('.app')) selectedApp = file;
+                    else if (filename.endsWith('.crc')) selectedCrc = file;
+                } else if (parts.length >= 3 && parts[1].toLowerCase() === 'visu') {
+                    selectedVisuFiles.push(file);
+                    selectedVisuPaths.push(parts.slice(1).join('/'));
+                }
+            }
+
+            const filesLoaded = !!selectedApp && !!selectedCrc && selectedVisuFiles.length > 0;
+            updateFileLoadStatus(true, filesLoaded);
+            updateDeployButton();
+        };
+
+        deployBtn.onclick = async () => {
+            let selectedRigs = getSelectedRigIds();
+            if (selectedRigs.length === 0) {
+                alert('Please select at least one rig.');
+                return;
+            }
+
+            if (selectedRigs.includes('rnd_hub')) {
+                alert('R&D Hub does not support CODESYS deployment. It will be removed from this deployment task.');
+                selectedRigs = selectedRigs.filter((id) => id !== 'rnd_hub');
+                if (selectedRigs.length === 0) return;
+            }
+
+            if (!selectedApp || !selectedCrc || selectedVisuFiles.length === 0) {
+                alert('Please select a valid deployment folder containing all required files.');
+                return;
+            }
+
+            setDeployButtonBusy(true);
+
+            try {
+                const formData = new FormData();
+                formData.append('app_file', selectedApp);
+                formData.append('crc_file', selectedCrc);
+
+                for (const file of selectedVisuFiles) {
+                    formData.append('visu_files', file);
+                }
+                formData.append('visu_paths', JSON.stringify(selectedVisuPaths));
+
+                const uploadRes = await fetch('/api/deploy/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!uploadRes.ok) {
+                    const err = await uploadRes.json().catch(() => ({}));
+                    throw new Error(err.detail || 'Upload failed');
+                }
+
+                const uploadData = await uploadRes.json();
+
+                const runFormData = new FormData();
+                runFormData.append('session_id', uploadData.session_id);
+                runFormData.append('selected_rigs', JSON.stringify(selectedRigs));
+
+                const runRes = await fetch('/api/deploy/run', {
+                    method: 'POST',
+                    body: runFormData
+                });
+
+                if (!runRes.ok) {
+                    const err = await runRes.json().catch(() => ({}));
+                    throw new Error(err.detail || 'Execution failed');
+                }
+
+            } catch (err) {
+                setDeployButtonBusy(false);
+                addLog(`ERROR: ${err.message}`, '#f00');
+                alert(`Error: ${err.message}`);
+            }
+        };
+
+        gitPullBtn.onclick = async () => {
+            const selectedRigs = getSelectedRigIds();
+            if (selectedRigs.length === 0) {
+                alert('Please select at least one rig.');
+                return;
+            }
+
+            if (!confirm(`Are you sure you want to update code and sync dependencies on ${selectedRigs.length} rig(s)?`)) {
+                return;
+            }
+
+            gitPullBtn.disabled = true;
+            gitPullBtn.textContent = 'UPDATING...';
+            gitPullBtn.classList.add('opacity-50');
+
+            try {
+                const formData = new FormData();
+                formData.append('selected_rigs', JSON.stringify(selectedRigs));
+
+                const response = await fetch('/api/deploy/git-pull', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    throw new Error(err.detail || 'Failed to start Git update');
+                }
+            } catch (err) {
+                addLog(`ERROR: ${err.message}`, '#f00');
+                alert(`Error: ${err.message}`);
+            } finally {
+                setTimeout(() => {
+                    gitPullBtn.disabled = false;
+                    gitPullBtn.textContent = 'Git Pull + Dependencies';
+                    gitPullBtn.classList.remove('opacity-50');
+                }, 3000);
+            }
+        };
+
+        loadRigTargets();
+        initWebSocket();
+    </script>
+</body>
+</html>

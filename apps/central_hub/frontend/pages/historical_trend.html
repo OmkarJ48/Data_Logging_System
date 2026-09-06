@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Historical Trend</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles/main.css" />
+  <link rel="icon" type="image/png" href="/assets/R&D Logo No Background.png" />
+  <style>
+    body {
+      margin: 0;
+      background: #111111;
+      overflow: hidden;
+    }
+
+    .shell-main {
+      position: fixed;
+      top: var(--header-h);
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #111111;
+    }
+
+    #trend-frame {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+      background: #111111;
+    }
+  </style>
+</head>
+<body class="body-styles" style="--toolbar-h:0px;">
+  <header class="header hub-nav">
+    <div class="hub-nav-left">
+      <a href="/pages/rig_overview.html?view=scene" class="hub-logo-wrap" aria-label="R&D Central Hub">
+        <img class="hub-logo" src="/assets/R&D Logo No Background.png" alt="R&D Logo" onerror="this.style.display='none'" />
+      </a>
+      <nav class="hub-nav-links" aria-label="Primary">
+        <a href="/pages/rig_overview.html?view=scene" class="hub-nav-link">3D Rig Overview</a>
+        <a href="/pages/rig_overview.html?view=panel" class="hub-nav-link">Rig Overview</a>
+        <a href="/pages/getting_started.html" class="hub-nav-link">Getting Started</a>
+        <a href="/pages/pdf_chart_generation.html" class="hub-nav-link">PDF Generation</a>
+        <a href="/pages/historical_trend.html" class="hub-nav-link active">Historical Trend</a>
+        <a href="https://forms.cloud.microsoft/pages/responsepage.aspx?id=EN4EnoVRF0i3jfI5MWvb7VBTrMrBH3BFs_hzwm2cGTtUNUlERlBaUVVKTzhZN1JTQlk2R00wWENLWS4u&route=shorturl" class="hub-nav-link" target="_blank" rel="noopener noreferrer">Request Form</a>
+        <a href="/pages/deploy.html" class="hub-nav-link" data-deploy-link>Deploy</a>
+      </nav>
+    </div>
+    <div class="hub-nav-right">
+      <div id="nav-time">00:00:00</div>
+      <div id="nav-date">01/01/2026</div>
+    </div>
+  </header>
+
+  <main class="shell-main">
+    <iframe
+      id="trend-frame"
+      title="Historical Trend"
+      src="/pages/historical_trend.html?embed=1"
+    ></iframe>
+  </main>
+
+  <script src="/assets/nav-clock.js" defer></script>
+  <script src="/assets/deploy-access.js" defer></script>
+</body>
+</html>
